@@ -128,23 +128,40 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const addProject = async (name: string) => {
     const newProjectPayload = {
       name,
-      userID: 1, // You can change this dynamically
-      wsID: 1,   // You can change this dynamically
+      userID: 1,
+      wsID: 1,
+      description: '', // Add a meaningful description
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: addDays(new Date(), 7).toISOString().split('T')[0],
+      estHours: 0,
+      actHours: 0
     };
-
+  
     try {
+      console.log('Sending project payload:', newProjectPayload);
       const response = await fetch('http://localhost:5000/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProjectPayload)
       });
-
-      if (!response.ok) throw new Error('Failed to create project');
-
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Project creation failed:', errorData);
+        throw new Error('Failed to create project');
+      }
+  
       const createdProject = await response.json();
-      setProjects(prev => [...prev, createdProject]);
+      console.log('Project created successfully:', createdProject);
+      
+      setProjects(prev => {
+        const newProjects = [...prev, createdProject];
+        console.log('Updated projects:', newProjects);
+        return newProjects;
+      });
     } catch (err) {
       console.error('Error adding project:', err);
+      throw err;
     }
   };
 
