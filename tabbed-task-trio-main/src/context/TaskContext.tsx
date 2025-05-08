@@ -57,7 +57,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   const fetchTasks = async (projectId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/project/${projectId}`);
+      const parsedProjectId = parseInt(projectId);
+      if (isNaN(parsedProjectId)) {
+        throw new Error('Invalid project ID');
+      }
+
+      const response = await fetch(`http://localhost:5000/api/tasks/project/${parsedProjectId}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
