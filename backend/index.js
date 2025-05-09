@@ -8,11 +8,28 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
+// Add logging middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 // In-memory storage
 let projects = [];
 
+// Helper function to reassign task IDs sequentially
+const reassignTaskIds = () => {
+    let taskId = 1;
+    projects.forEach(project => {
+        project.tasks.forEach(task => {
+            task.id = taskId++;
+        });
+    });
+};
+
 // GET all projects
 app.get('/api/projects', (req, res) => {
+    console.log('GET /api/projects - Returning projects:', projects);
     res.json(projects);
 });
 
@@ -27,7 +44,7 @@ app.get('/api/projects/:id', (req, res) => {
 
 // POST create new project
 app.post('/api/projects', (req, res) => {
-    console.log('Received project creation request:', req.body);
+    console.log('POST /api/projects - Received body:', req.body);
     
     const requiredFields = ['userID', 'name', 'startDate', 'endDate', 'wsID'];
     const missing = requiredFields.filter(field => !req.body[field]);
@@ -62,7 +79,8 @@ app.post('/api/projects', (req, res) => {
         actHours: parseFloat(actHours),
         wsID: parseInt(wsID),
         createdAt: new Date().toISOString(),
-        modifiedAt: new Date().toISOString()
+        modifiedAt: new Date().toISOString(),
+        tasks: []
     };
 
     console.log('Adding new project:', newProject);
@@ -106,7 +124,6 @@ app.patch('/api/projects/:id', (req, res) => {
     res.json(updatedProject);
 });
 
-
 // DELETE project
 app.delete('/api/projects/:id', (req, res) => {
     const projectId = parseInt(req.params.id);
@@ -128,6 +145,8 @@ app.get('/api/tasks', (req, res) => {
 
 // POST create new task
 app.post('/api/tasks', (req, res) => {
+    console.log('POST /api/tasks - Received body:', req.body);
+    
     const {
         wsID, userID, projectID, name, description = '',
         taskLevel = 1, status = 'TODO', parentID = 0,
@@ -139,18 +158,26 @@ app.post('/api/tasks', (req, res) => {
 
     // Validate required fields
     if (!wsID || !userID || !projectID || !name) {
-        return res.status(400).json({ error: 'Missing required fields: wsID, userID, projectID, or name' });
+        console.error('Missing required fields:', { wsID, userID, projectID, name });
+        return res.status(400).json({ 
+            error: 'Missing required fields: wsID, userID, projectID, or name' 
+        });
     }
 
     const projectIndex = projects.findIndex(p => p.id === projectID);
     if (projectIndex === -1) {
+        console.error('Project not found for ID:', projectID);
         return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Get the next sequential ID
+    const allTasks = projects.reduce((acc, project) => acc.concat(project.tasks), []);
+    const newTaskId = allTasks.length + 1;
+
     const newTask = {
-        id: Date.now(),
-        wsID,
-        userID,
+        id: newTaskId,
+        wsID: parseInt(wsID),
+        userID: parseInt(userID),
         projectID,
         name,
         description,
@@ -164,19 +191,40 @@ app.post('/api/tasks', (req, res) => {
         assignee1ID,
         assignee2ID,
         assignee3ID,
-        estHours,
+        estHours: parseFloat(estHours),
         estPrevHours,
-        actHours,
+        actHours: parseFloat(actHours),
         isExeceeded,
         info,
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString()
     };
 
+    console.log('Adding new task with ID:', newTaskId);
     projects[projectIndex].tasks.push(newTask);
+    
+    // Reassign IDs to maintain sequential order
+    reassignTaskIds();
+    
     res.status(201).json(newTask);
 });
 
+// GET tasks for a specific project
+app.get('/api/tasks/project/:projectId', (req, res) => {
+    const projectId = parseInt(req.params.projectId);
+    console.log('GET /api/tasks/project/:projectId - Looking for project:', projectId);
+    
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        console.error('Project not found for ID:', projectId);
+        return res.status(404).json({ error: 'Project not found' });
+    }
+
+    console.log('Returning tasks for project:', project.tasks);
+    res.json(project.tasks);
+});
+
+// PUT update task
 app.put('/api/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
     const updates = req.body;
@@ -206,6 +254,7 @@ app.put('/api/tasks/:id', (req, res) => {
     res.json(updatedTask);
 });
 
+// DELETE task
 app.delete('/api/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
     
@@ -221,14 +270,33 @@ app.delete('/api/tasks/:id', (req, res) => {
     // Remove task from project
     projects[projectIndex].tasks = projects[projectIndex].tasks.filter(t => t.id !== taskId);
     
+    // Reassign IDs to maintain sequential order
+    reassignTaskIds();
+    
     res.json({ 
         success: true,
         message: `Task ${taskId} deleted successfully`
     });
 });
 
+// GET all tasks in a structured format
+app.get('/api/tasks/list', (req, res) => {
+    const allTasks = projects.reduce((acc, project) => {
+        return acc.concat(project.tasks.map(task => ({
+            ...task,
+            projectName: project.name,
+            projectID: project.id,
+            projectDescription: project.description,
+            projectStartDate: project.startDate,
+            projectEndDate: project.endDate
+        })));
+    }, []);
+
+    res.json(allTasks);
+});
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
+    console.log('Initial projects:', projects);
 });

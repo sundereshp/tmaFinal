@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { ActionItem, Priority, Project, Status, Subtask, Task, TimerInfo, User, SubactionItem } from "../types/task";
 import { addDays } from "date-fns";
+import toast from 'react-hot-toast'; // Import toast
 
 // Sample user data
 const users: User[] = [
@@ -54,6 +55,29 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/projects');
+        if (!response.ok) throw new Error('Failed to fetch projects');
+        const fetchedProjects = await response.json();
+        setProjects(fetchedProjects);
+        
+        // If no projects exist, create a default one
+        if (fetchedProjects.length === 0) {
+          await addProject('Default Project');
+        }
+        
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+        setError('Failed to fetch projects');
+        setIsLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
 
   const fetchTasks = async (projectId: string) => {
     try {
@@ -122,43 +146,35 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
     fetchProjects();
   }, [selectedProjectId]);
-
+  
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
   const addProject = async (name: string) => {
-    const newProjectPayload = {
-      name,
-      userID: 1,
-      wsID: 1,
-      description: '', // Add a meaningful description
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: addDays(new Date(), 7).toISOString().split('T')[0],
-      estHours: 0,
-      actHours: 0
-    };
-  
     try {
-      console.log('Sending project payload:', newProjectPayload);
       const response = await fetch('http://localhost:5000/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProjectPayload)
+        body: JSON.stringify({
+          userID: 1,
+          name,
+          startDate: new Date().toISOString(),
+          endDate: addDays(new Date(), 30).toISOString(),
+          wsID: 1
+        })
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Project creation failed:', errorData);
-        throw new Error('Failed to create project');
+        throw new Error(errorData.error || 'Failed to create project');
       }
-  
+
       const createdProject = await response.json();
-      console.log('Project created successfully:', createdProject);
+      setProjects(prev => [...prev, createdProject]);
       
-      setProjects(prev => {
-        const newProjects = [...prev, createdProject];
-        console.log('Updated projects:', newProjects);
-        return newProjects;
-      });
+      // Select the newly created project
+      setSelectedProjectId(createdProject.id);
+      
+      return createdProject;
     } catch (err) {
       console.error('Error adding project:', err);
       throw err;
@@ -253,9 +269,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const addTask = async (projectId: string, name: string) => {
     const newTaskPayload = {
       name,
-      wsID: 1, // You can change this dynamically
-      userID: 1, // You can change this dynamically
-      projectID: parseInt(projectId), // Convert to number
+      wsID: 1,
+      userID: 1,
+      projectID: parseInt(projectId),
       taskLevel: 1,
       status: 'TODO',
       parentID: 0,
@@ -277,43 +293,52 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     };
 
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks?projectId=${projectId}`, {
+      const response = await fetch('http://localhost:5000/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTaskPayload)
       });
 
-      if (!response.ok) throw new Error('Failed to create task');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create task');
+      }
 
       const createdTask = await response.json();
       
       // Update the local state with the new task
-      setProjects(projects.map(project => {
-        if (project.id === projectId) { // Convert projectId to number for comparison
-          return {
-            ...project,
-            tasks: [
-              ...project.tasks,
-              {
-                id: createdTask.id,
-                name: createdTask.name,
-                assignee: null,
-                dueDate: null,
-                priority: "normal" as Priority,
-                status: "todo" as Status,
-                comments: "",
-                estimatedTime: null,
-                timeSpent: 0,
-                expanded: true,
-                subtasks: []
-              }
-            ]
-          };
-        }
-        return project;
-      }));
+      setProjects(prevProjects => {
+        return prevProjects.map(project => {
+          if (project.id === projectId) {
+            return {
+              ...project,
+              tasks: [
+                ...project.tasks,
+                {
+                  id: createdTask.id.toString(),
+                  name: createdTask.name,
+                  assignee: null,
+                  dueDate: null,
+                  priority: "normal" as Priority,
+                  status: "todo" as Status,
+                  comments: "",
+                  estimatedTime: null,
+                  timeSpent: 0,
+                  expanded: true,
+                  subtasks: []
+                }
+              ]
+            };
+          }
+          return project;
+        });
+      });
+
+      toast.success('Task created successfully');
+      return createdTask;
     } catch (err) {
       console.error('Error adding task:', err);
+      toast.error('Failed to create task');
       throw err;
     }
   };

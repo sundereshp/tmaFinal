@@ -384,6 +384,17 @@ export function TaskTable() {
                         setName={(name) => setNewItemState({ type: 'task', name })}
                         onSave={handleSaveNewItem}
                         onCancel={() => setNewItemState(null)}
+                        newItemState={newItemState}
+                        selectedProject={selectedProject}
+                        addTask={addTask}
+                        addSubtask={addSubtask}
+                        addActionItem={addActionItem}
+                        addSubactionItem={addSubactionItem}
+                        updateTask={updateTask}
+                        updateSubtask={updateSubtask}
+                        updateActionItem={updateActionItem}
+                        setNewItemState={setNewItemState}
+                        toast={toast}
                       />
                     </td>
                   </tr>
@@ -425,6 +436,17 @@ export function TaskTable() {
                             }
                           }}
                           parentTaskId={task.id}
+                          newItemState={newItemState}
+                          selectedProject={selectedProject}
+                          addTask={addTask}
+                          addSubtask={addSubtask}
+                          addActionItem={addActionItem}
+                          addSubactionItem={addSubactionItem}
+                          updateTask={updateTask}
+                          updateSubtask={updateSubtask}
+                          updateActionItem={updateActionItem}
+                          setNewItemState={setNewItemState}
+                          toast={toast}
                         />
                       )}
 
@@ -470,6 +492,17 @@ export function TaskTable() {
                               }}
                               parentTaskId={task.id}
                               parentSubtaskId={subtask.id}
+                              newItemState={newItemState}
+                              selectedProject={selectedProject}
+                              addTask={addTask}
+                              addSubtask={addSubtask}
+                              addActionItem={addActionItem}
+                              addSubactionItem={addSubactionItem}
+                              updateTask={updateTask}
+                              updateSubtask={updateSubtask}
+                              updateActionItem={updateActionItem}
+                              setNewItemState={setNewItemState}
+                              toast={toast}
                             />
                           )}
 
@@ -519,6 +552,17 @@ export function TaskTable() {
                                   parentTaskId={task.id}
                                   parentSubtaskId={subtask.id}
                                   parentActionItemId={actionItem.id}
+                                  newItemState={newItemState}
+                                  selectedProject={selectedProject}
+                                  addTask={addTask}
+                                  addSubtask={addSubtask}
+                                  addActionItem={addActionItem}
+                                  addSubactionItem={addSubactionItem}
+                                  updateTask={updateTask}
+                                  updateSubtask={updateSubtask}
+                                  updateActionItem={updateActionItem}
+                                  setNewItemState={setNewItemState}
+                                  toast={toast}
                                 />
                               )}
 
@@ -561,6 +605,17 @@ export function TaskTable() {
                     setName={(name) => setNewItemState({ ...newItemState, name })}
                     onSave={handleSaveNewItem}
                     onCancel={() => setNewItemState(null)}
+                    newItemState={newItemState}
+                    selectedProject={selectedProject}
+                    addTask={addTask}
+                    addSubtask={addSubtask}
+                    addActionItem={addActionItem}
+                    addSubactionItem={addSubactionItem}
+                    updateTask={updateTask}
+                    updateSubtask={updateSubtask}
+                    updateActionItem={updateActionItem}
+                    setNewItemState={setNewItemState}
+                    toast={toast}
                   />
                 )}
               </tbody>
