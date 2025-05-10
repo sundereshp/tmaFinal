@@ -15,25 +15,39 @@ interface DueDateCellProps {
 
 export function DueDateCell({ dueDate, onChange, disabled = false }: DueDateCellProps) {
   const [isOpen, setIsOpen] = useState(false);
-  
-  // Predefined date options
+
+  // Predefined date options (calculated on each render)
   const today = new Date();
   const predefinedOptions = [
-    { label: "Today", date: today },
-    { label: "Tomorrow", date: addDays(today, 1) },
-    { label: "This weekend", date: addDays(today, 6 - today.getDay()) }, // Saturday
-    { label: "Next week", date: addDays(today, 7) },
-    { label: "Next weekend", date: addDays(today, 13 - today.getDay()) }, // Next Saturday
-    { label: "In 2 weeks", date: addDays(today, 14) },
-    { label: "In 4 weeks", date: addDays(today, 28) },
-    { label: "No due date", date: null },
+    { label: "Today", getDate: () => new Date(today.getFullYear(), today.getMonth(), today.getDate()) },
+    { label: "Tomorrow", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 1) },
+    {
+      label: "This weekend",
+      getDate: () => {
+        const day = today.getDay();
+        // Saturday of this week
+        return addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), day === 6 ? 0 : 6 - day);
+      }
+    },
+    { label: "Next week", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 7) },
+    {
+      label: "Next weekend",
+      getDate: () => {
+        const day = today.getDay();
+        // Saturday of next week
+        return addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), day === 6 ? 7 : 13 - day);
+      }
+    },
+    { label: "In 2 weeks", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 14) },
+    { label: "In 4 weeks", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 28) },
+    { label: "No due date", getDate: () => null },
   ];
-  
-  const handleSelectPredefined = (date: Date | null) => {
-    onChange(date);
+
+  const handleSelectPredefined = (getDateFn: () => Date | null) => {
+    onChange(getDateFn());
     setIsOpen(false);
   };
-  
+
   const handleSelectCalendarDate = (date: Date | null) => {
     onChange(date);
     setIsOpen(false);
@@ -42,38 +56,22 @@ export function DueDateCell({ dueDate, onChange, disabled = false }: DueDateCell
   // Format due date for display
   const formatDueDate = (date: Date | null): string => {
     if (!date) return "";
-    
-    // Check if it's a predefined date
-    for (const option of predefinedOptions) {
-      if (option.date && isSameDay(option.date, date)) {
-        return option.label;
-      }
-    }
-    
-    // If it's today or tomorrow
-    if (isSameDay(date, today)) {
-      return "Today";
-    } else if (isSameDay(date, addDays(today, 1))) {
-      return "Tomorrow";
-    }
-    
-    // Check if it's in the past
+    const today = new Date();
     if (isBefore(date, today) && !isSameDay(date, today)) {
-      return `${format(date, "MMM d")} (Overdue)`;
+      return `${format(date, "dd-MM-yyyy")} (Overdue)`;
     }
-    
-    // Default format
-    return format(date, "MMM d");
+    return format(date, "dd-MM-yyyy");
   };
+  
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button 
+        <Button
           variant={dueDate ? "outline" : "ghost"}
-          size="sm" 
+          size="sm"
           className={cn(
-            "h-6 px-2 text-xs justify-start", 
+            "h-6 px-2 text-xs justify-start",
             dueDate && isBefore(dueDate, today) && !isSameDay(dueDate, today) ? "text-destructive" : "",
             disabled ? "cursor-not-allowed opacity-50" : ""
           )}
@@ -98,7 +96,7 @@ export function DueDateCell({ dueDate, onChange, disabled = false }: DueDateCell
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start text-left px-2 py-1 h-8"
-                  onClick={() => handleSelectPredefined(option.date)}
+                  onClick={() => handleSelectPredefined(option.getDate)}
                 >
                   {option.label}
                 </Button>
