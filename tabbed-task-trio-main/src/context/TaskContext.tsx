@@ -93,6 +93,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         actionItems: [],
         subactionItems: []
       };
+      if (task.dueDate) {
+        task.dueDate = new Date(task.dueDate);
+      }
     });
 
     tasks.forEach(task => {
