@@ -256,6 +256,29 @@ app.put('/api/tasks/:id', (req, res) => {
     project.tasks[taskIndex] = updatedTask;
     res.json(updatedTask);
 });
+app.put('/api/tasks/:id', (req, res) => {
+    const taskId = parseInt(req.params.id);
+    const updates = req.body;
+    
+    const project = projects.find(p => p.tasks.some(t => t.id === taskId));
+    if (!project) return res.status(404).json({ error: 'Task not found' });
+
+    const taskIndex = project.tasks.findIndex(t => t.id === taskId);
+    const updatedTask = {
+        ...project.tasks[taskIndex],
+        ...updates,
+        modifiedAt: new Date().toISOString()
+    };
+
+    // Validation
+    if (!updatedTask.wsID || !updatedTask.userID || !updatedTask.projectID || !updatedTask.name) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    project.tasks[taskIndex] = updatedTask;
+    res.json(updatedTask);
+});
+
 
 // DELETE task
 app.delete('/api/tasks/:id', (req, res) => {

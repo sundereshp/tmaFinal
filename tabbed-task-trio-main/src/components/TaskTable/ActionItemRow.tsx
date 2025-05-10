@@ -37,7 +37,7 @@ interface ActionItemRowProps {
   toggleExpanded: (projectId: string, taskId: string, subtaskId: string, actionItemId: string) => void;
   updateActionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
   handleSaveEdit: () => void;
-  
+
   handleAddItem: (type: 'task' | 'subtask' | 'actionItem' | 'subactionItem', parentTaskId?: string, parentSubtaskId?: string, parentActionItemId?: string) => void;
   startTimer: (projectId: string, actionItemId: string) => void;
   stopTimer: () => void;

@@ -38,7 +38,7 @@ interface TaskContextType {
   stopTimer: () => void;
   getUserById: (id: string | null) => User | undefined;
   updateItem: (itemId: string, updates: any) => void;
-  
+
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -345,7 +345,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) throw new Error('Failed to update task');
 
-      const updatedTask = await response.json();
 
       setProjects(projects.map(project => {
         if (project.id === projectId) {
@@ -398,26 +397,40 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateSubtask = (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask =>
-                  subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
-                )
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
+  const updateSubtask = async (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/tasks/${subtaskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) throw new Error('Failed to update subtask');
+
+      setProjects(projects.map(project => {
+        if (project.id === projectId) {
+          return {
+            ...project,
+            tasks: project.tasks.map(task => {
+              if (task.id === taskId) {
+                return {
+                  ...task,
+                  subtasks: task.subtasks.map(subtask =>
+                    subtask.id === subtaskId ? { ...subtask, ...updates } : subtask
+                  )
+                };
+              }
+              return task;
+            })
+          };
+        }
+        return project;
+      }));
+    } catch (err) {
+      console.error('Error updating subtask:', err);
+      throw err;
+    }
   };
 
 
@@ -451,13 +464,22 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateActionItem = (
+  const updateActionItem = async (
     projectId: string,
     taskId: string,
     subtaskId: string,
     actionItemId: string,
     updates: Partial<ActionItem>
   ) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/tasks/${actionItemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) throw new Error('Failed to update action item');
+
     setProjects(projects.map(project => {
       if (project.id === projectId) {
         return {
@@ -485,6 +507,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       }
       return project;
     }));
+    } catch (err) {
+      console.error('Error updating action item:', err);
+      throw err;
+    }
   };
 
 
@@ -517,7 +543,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateSubactionItem = (
+  const updateSubactionItem = async (
     projectId: string,
     taskId: string,
     subtaskId: string,
@@ -525,6 +551,15 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     subactionItemId: string,
     updates: Partial<SubactionItem>
   ) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/tasks/${subactionItemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) throw new Error('Failed to update subaction item');
+
     setProjects(projects.map(project => {
       if (project.id === projectId) {
         return {
@@ -560,6 +595,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       }
       return project;
     }));
+    } catch (err) {
+      console.error('Error updating subaction item:', err);
+      throw err;
+    }
   };
   const updateItem = async (itemId: string, updates: any) => {
     try {

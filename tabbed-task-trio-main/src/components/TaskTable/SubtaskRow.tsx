@@ -58,10 +58,10 @@ export function SubtaskRow({
   const [isHovered, setIsHovered] = useState(false);
   const { deleteItem } = useTaskContext();
   const handleEditName = () => {
-    setEditingItem({ 
-      id: subtask.id, 
-      type: 'subtask', 
-      name: subtask.name 
+    setEditingItem({
+      id: subtask.id,
+      type: 'subtask',
+      name: subtask.name
     });
   };
 
@@ -70,8 +70,8 @@ export function SubtaskRow({
   };
 
   return (
-    <tr 
-      key={subtask.id} 
+    <tr
+      key={subtask.id}
       className="task-row w-full border-separate border-spacing-0"
       onMouseEnter={() => {
         setHoveredRowId(subtask.id);
@@ -220,7 +220,7 @@ export function SubtaskRow({
         />
       </td>
       <td>
-        <RowActions 
+        <RowActions
           onDelete={() => deleteItem(selectedProjectId, subtask.id)}
           onStartTimer={() => handleStartTimer(taskId, subtask.id)}
           showTimer={true}

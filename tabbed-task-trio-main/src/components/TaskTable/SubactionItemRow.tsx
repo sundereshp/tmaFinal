@@ -88,7 +88,7 @@ export function SubactionItemRow({
     >
       <td className="name-cell">
         <div className="flex items-center pl-16 w-full overflow-hidden">
-          
+
           <div className="flex-shrink-0 mr-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -209,7 +209,7 @@ export function SubactionItemRow({
         />
       </td>
       <td>
-        <RowActions 
+        <RowActions
           onDelete={() => deleteItem(selectedProjectId, subactionItem.id)}
           onStartTimer={handleTimerToggle}
           isTimerActive={isActiveTimer}
