@@ -72,7 +72,7 @@ export function TaskRow({
 
   return (
     <tr 
-      className="task-row"
+      className="task-row border-b border-gray-200 dark:border-gray-700 px-2"
       onMouseEnter={() => {
         setHoveredRowId(task.id);
         setIsHovered(true);

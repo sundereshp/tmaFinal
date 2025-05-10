@@ -58,7 +58,7 @@ export function TaskTableHeader({
   };
 
   return (
-    <div className="mb-4 flex items-center justify-between sticky top-0 bg-background z-10 py-2">
+    <div className="mb-4 flex items-center justify-between sticky top-0 bg-background z-10 px-8 py-3">
       <div className="flex items-center">
         <h1 className="text-2xl font-bold mr-4">{projectName}</h1>
 

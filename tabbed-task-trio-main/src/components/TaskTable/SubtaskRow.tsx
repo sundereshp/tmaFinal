@@ -72,7 +72,7 @@ export function SubtaskRow({
   return (
     <tr 
       key={subtask.id} 
-      className="task-row"
+      className="task-row w-full border-separate border-spacing-0"
       onMouseEnter={() => {
         setHoveredRowId(subtask.id);
         setIsHovered(true);

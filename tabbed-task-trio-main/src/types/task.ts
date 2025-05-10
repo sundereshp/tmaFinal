@@ -22,6 +22,10 @@ export interface SubactionItem {
   comments: string;
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
+  level1ID: number;
+  level2ID: number;
+  level3ID: number;
+  level4ID: number;
 }
 
 export interface ActionItem {
@@ -36,6 +40,10 @@ export interface ActionItem {
   timeSpent: number; // in minutes
   expanded: boolean;
   subactionItems: SubactionItem[];
+  level1ID: number;
+  level2ID: number;
+  level3ID: number;
+  level4ID: number;
 }
 
 export interface Subtask {
@@ -50,6 +58,10 @@ export interface Subtask {
   timeSpent: number; // in minutes
   expanded: boolean;
   actionItems: ActionItem[];
+  level1ID: number;
+  level2ID: number;
+  level3ID: number;
+  level4ID: number;
 }
 
 export interface Task {
@@ -64,6 +76,10 @@ export interface Task {
   timeSpent: number; // in minutes
   expanded: boolean;
   subtasks: Subtask[];
+  level1ID: number;
+  level2ID: number;
+  level3ID: number;
+  level4ID: number;
 }
 
 export interface Project {
@@ -83,7 +99,11 @@ export interface Project {
 
 export interface TimerInfo {
   projectId: string | null;
+  taskId: string | null;
+  subtaskId: string | null;
   actionItemId: string | null;
+  subactionItemId: string | null;
   startTime: Date | null;
   isRunning: boolean;
+  isActive: boolean;
 }

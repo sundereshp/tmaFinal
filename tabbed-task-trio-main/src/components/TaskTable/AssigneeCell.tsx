@@ -65,7 +65,7 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
   const additionalCount = assigneeArray.length - 3;
 
   return (
-    <div className="flex flex-wrap gap-1 items-center min-h-[28px]">
+    <div className="flex flex-wrap gap-1 items-center justify-center min-h-[28px]">
       {/* Show assignee avatars */}
       {visibleAssignees.map(id => {
         const user = users.find(u => u.id === id);

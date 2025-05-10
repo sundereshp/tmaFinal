@@ -45,20 +45,20 @@ app.get('/api/projects/:id', (req, res) => {
 // POST create new project
 app.post('/api/projects', (req, res) => {
     console.log('POST /api/projects - Received body:', req.body);
-    
+
     const requiredFields = ['userID', 'name', 'startDate', 'endDate', 'wsID'];
     const missing = requiredFields.filter(field => !req.body[field]);
-    
+
     if (missing.length > 0) {
         console.error('Missing required fields:', missing);
-        return res.status(400).json({ 
+        return res.status(400).json({
             error: `Missing required fields: ${missing.join(', ')}`
         });
     }
 
     const {
         userID, name, startDate, endDate,
-        description = '', 
+        description = '',
         estHours = 0, actHours = 0, wsID
     } = req.body;
 
@@ -67,7 +67,7 @@ app.post('/api/projects', (req, res) => {
         console.error('Validation failed for project creation');
         return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     const newProject = {
         id: projects.length > 0 ? Math.max(...projects.map(p => p.id)) + 1 : 1,
         userID: parseInt(userID),
@@ -86,7 +86,7 @@ app.post('/api/projects', (req, res) => {
     console.log('Adding new project:', newProject);
     projects.push(newProject);
     console.log('Projects after addition:', projects);
-    
+
     res.status(201).json(newProject);
 });
 
@@ -94,7 +94,7 @@ app.post('/api/projects', (req, res) => {
 app.patch('/api/projects/:id', (req, res) => {
     const projectId = parseInt(req.params.id);
     const projectIndex = projects.findIndex(p => p.id === projectId);
-    
+
     if (projectIndex === -1) {
         return res.status(404).json({ error: 'Project not found' });
     }
@@ -128,7 +128,7 @@ app.patch('/api/projects/:id', (req, res) => {
 app.delete('/api/projects/:id', (req, res) => {
     const projectId = parseInt(req.params.id);
     const projectIndex = projects.findIndex(p => p.id === projectId);
-    
+
     if (projectIndex === -1) {
         return res.status(404).json({ error: 'Project not found' });
     }
@@ -143,77 +143,86 @@ app.get('/api/tasks', (req, res) => {
     res.json(allTasks);
 });
 
-// POST create new task
+// POST create new task (including subtasks)
+// POST /api/tasks endpoint
 app.post('/api/tasks', (req, res) => {
     console.log('POST /api/tasks - Received body:', req.body);
     
     const {
         wsID, userID, projectID, name, description = '',
         taskLevel = 1, status = 'TODO', parentID = 0,
-        level1ID = 0, level2ID = 0, level3ID = 0, level4ID = 0,
         assignee1ID = 0, assignee2ID = 0, assignee3ID = 0,
         estHours = 0, estPrevHours = [], actHours = 0,
-        isExeceeded = 0, info = {}
+        isExceeded = 0, info = {}
     } = req.body;
 
-    // Validate required fields
-    if (!wsID || !userID || !projectID || !name) {
-        console.error('Missing required fields:', { wsID, userID, projectID, name });
-        return res.status(400).json({ 
-            error: 'Missing required fields: wsID, userID, projectID, or name' 
-        });
-    }
-
-    const projectIndex = projects.findIndex(p => p.id === projectID);
-    if (projectIndex === -1) {
-        console.error('Project not found for ID:', projectID);
+    const project = projects.find(p => p.id === parseInt(projectID));
+    if (!project) {
         return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Get the next sequential ID
-    const allTasks = projects.reduce((acc, project) => acc.concat(project.tasks), []);
-    const newTaskId = allTasks.length + 1;
-
     const newTask = {
-        id: newTaskId,
+        id: project.tasks.length > 0 ? Math.max(...project.tasks.map(t => t.id)) + 1 : 1,
         wsID: parseInt(wsID),
         userID: parseInt(userID),
-        projectID,
+        projectID: parseInt(projectID),
         name,
         description,
         taskLevel,
         status,
-        parentID,
-        level1ID,
-        level2ID,
-        level3ID,
-        level4ID,
-        assignee1ID,
-        assignee2ID,
-        assignee3ID,
+        parentID: parseInt(parentID),
+        level1ID: 0,
+        level2ID: 0,
+        level3ID: 0,
+        level4ID: 0,
+        assignee1ID: parseInt(assignee1ID),
+        assignee2ID: parseInt(assignee2ID),
+        assignee3ID: parseInt(assignee3ID),
         estHours: parseFloat(estHours),
         estPrevHours,
         actHours: parseFloat(actHours),
-        isExeceeded,
+        isExceeded,
         info,
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString()
     };
 
-    console.log('Adding new task with ID:', newTaskId);
-    projects[projectIndex].tasks.push(newTask);
-    
-    // Reassign IDs to maintain sequential order
-    reassignTaskIds();
-    
+    // Handle hierarchy levels
+    if (taskLevel === 1) {
+        newTask.level1ID = newTask.id;
+    } else {
+        const parentTask = project.tasks.find(t => t.id === newTask.parentID);
+        if (!parentTask) return res.status(400).json({ error: 'Parent task not found' });
+
+        switch(taskLevel) {
+            case 2: // Subtask
+                newTask.level1ID = parentTask.level1ID;
+                newTask.level2ID = newTask.id;
+                break;
+            case 3: // Action Item
+                newTask.level1ID = parentTask.level1ID;
+                newTask.level2ID = parentTask.level2ID;
+                newTask.level3ID = newTask.id;
+                break;
+            case 4: // Sub-action
+                newTask.level1ID = parentTask.level1ID;
+                newTask.level2ID = parentTask.level2ID;
+                newTask.level3ID = parentTask.level3ID;
+                newTask.level4ID = newTask.id;
+                break;
+        }
+    }
+
+    project.tasks.push(newTask);
     res.status(201).json(newTask);
 });
+
 
 // GET tasks for a specific project
 app.get('/api/tasks/project/:projectId', (req, res) => {
     const projectId = parseInt(req.params.projectId);
     console.log('GET /api/tasks/project/:projectId - Looking for project:', projectId);
-    
+
     const project = projects.find(p => p.id === projectId);
     if (!project) {
         console.error('Project not found for ID:', projectId);
@@ -228,12 +237,12 @@ app.get('/api/tasks/project/:projectId', (req, res) => {
 app.put('/api/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
     const updates = req.body;
-    
+
     // Find project containing the task
-    const project = projects.find(p => 
+    const project = projects.find(p =>
         p.tasks.some(t => t.id === taskId)
     );
-    
+
     if (!project) {
         return res.status(404).json({ error: 'Task not found' });
     }
@@ -257,23 +266,23 @@ app.put('/api/tasks/:id', (req, res) => {
 // DELETE task
 app.delete('/api/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
-    
+
     // Find project containing the task
-    const projectIndex = projects.findIndex(p => 
+    const projectIndex = projects.findIndex(p =>
         p.tasks.some(t => t.id === taskId)
     );
-    
+
     if (projectIndex === -1) {
         return res.status(404).json({ error: 'Task not found' });
     }
 
     // Remove task from project
     projects[projectIndex].tasks = projects[projectIndex].tasks.filter(t => t.id !== taskId);
-    
+
     // Reassign IDs to maintain sequential order
     reassignTaskIds();
-    
-    res.json({ 
+
+    res.json({
         success: true,
         message: `Task ${taskId} deleted successfully`
     });

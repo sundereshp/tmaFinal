@@ -49,8 +49,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [timer, setTimer] = useState<TimerInfo>({
     projectId: null,
+    taskId: null,
+    subtaskId: null,
     actionItemId: null,
+    subactionItemId: null,
     startTime: null,
+    isActive: false,
     isRunning: false
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -63,12 +67,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         if (!response.ok) throw new Error('Failed to fetch projects');
         const fetchedProjects = await response.json();
         setProjects(fetchedProjects);
-        
+
         // If no projects exist, create a default one
         if (fetchedProjects.length === 0) {
           await addProject('Default Project');
         }
-        
+
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching projects:', err);
@@ -78,60 +82,71 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     };
     fetchProjects();
   }, []);
+  // Updated buildTaskTree function
+  function buildTaskTree(tasks: any[]) {
+    const tasksById: Record<string, any> = {};
+    const rootTasks: any[] = [];
+
+    tasks.forEach(task => {
+      tasksById[task.id] = {
+        ...task,
+        subtasks: [],
+        actionItems: [],
+        subactionItems: []
+      };
+    });
+
+    tasks.forEach(task => {
+      if (task.level4ID !== 0) {
+        const parent = tasksById[task.level3ID];
+        if (parent) parent.subactionItems.push(tasksById[task.id]);
+      } else if (task.level3ID !== 0) {
+        const parent = tasksById[task.level2ID];
+        if (parent) parent.actionItems.push(tasksById[task.id]);
+      } else if (task.level2ID !== 0) {
+        const parent = tasksById[task.level1ID];
+        if (parent) parent.subtasks.push(tasksById[task.id]);
+      } else {
+        rootTasks.push(tasksById[task.id]);
+      }
+    });
+
+    return rootTasks;
+  }
+
+
+
+
 
   const fetchTasks = async (projectId: string) => {
     try {
-      const parsedProjectId = parseInt(projectId);
-      if (isNaN(parsedProjectId)) {
-        throw new Error('Invalid project ID');
-      }
-
-      const response = await fetch(`http://localhost:5000/api/tasks/project/${parsedProjectId}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to fetch tasks');
-      }
+      const response = await fetch(`http://localhost:5000/api/tasks/project/${projectId}`);
+      if (!response.ok) throw new Error('Failed to fetch tasks');
 
       const tasks = await response.json();
-      
-      // Update the local state with the fetched tasks
-      setProjects(projects.map(project => {
-        if (project.id === projectId) {
-          return {
-            ...project,
-            tasks: tasks.map(task => ({
-              id: task.id.toString(),
-              name: task.name,
-              assignee: null,
-              dueDate: null,
-              priority: "normal" as Priority,
-              status: task.statusDisplay as Status,
-              comments: "",
-              estimatedTime: null,
-              timeSpent: 0,
-              expanded: true,
-              subtasks: []
-            }))
-          };
-        }
-        return project;
-      }));
+      const tree = buildTaskTree(tasks);
+
+      setProjects(prevProjects =>
+        prevProjects.map(project =>
+          project.id === projectId ? { ...project, tasks: tree } : project
+        )
+      );
     } catch (err) {
       console.error('Error fetching tasks:', err);
       throw err;
     }
   };
 
+
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/projects');
         if (!response.ok) throw new Error('Failed to fetch projects');
-        
+
         const projects = await response.json();
         setProjects(projects);
-        
+
         // If there's a selected project, fetch its tasks
         if (selectedProjectId) {
           fetchTasks(selectedProjectId);
@@ -146,7 +161,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
     fetchProjects();
   }, [selectedProjectId]);
-  
+
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
   const addProject = async (name: string) => {
@@ -170,10 +185,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       const createdProject = await response.json();
       setProjects(prev => [...prev, createdProject]);
-      
+
       // Select the newly created project
       setSelectedProjectId(createdProject.id);
-      
+
       return createdProject;
     } catch (err) {
       console.error('Error adding project:', err);
@@ -194,9 +209,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
       });
-  
+
       if (!response.ok) throw new Error('Failed to rename project');
-  
+
       const updatedProject = await response.json();
       setProjects(prev =>
         prev.map(project => project.id === updatedProject.id ? updatedProject : project)
@@ -254,7 +269,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     const newProject: Project = {
       ...deepCopy,
       id: `p${Date.now()}`,
-      name: highestNumber > 0 
+      name: highestNumber > 0
         ? `${baseName} (${highestNumber + 1})`
         : `${baseName} (1)`
     };
@@ -268,80 +283,55 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   const addTask = async (projectId: string, name: string) => {
     const newTaskPayload = {
-      name,
-      wsID: 1,
-      userID: 1,
-      projectID: parseInt(projectId),
-      taskLevel: 1,
-      status: 'TODO',
-      parentID: 0,
-      level1ID: 0,
-      level2ID: 0,
-      level3ID: 0,
-      level4ID: 0,
-      assignee1ID: 0,
-      assignee2ID: 0,
-      assignee3ID: 0,
-      estHours: 0,
-      estPrevHours: [],
-      actHours: 0,
-      isExeceeded: 0,
-      info: {},
-      description: '',
-      createdAt: new Date().toISOString(),
-      modifiedAt: new Date().toISOString()
+        name,
+        wsID: 1,
+        userID: 1,
+        projectID: parseInt(projectId),
+        taskLevel: 1,  // Level 1 task
+        status: 'TODO',
+        parentID: 0,  // Parent ID should be 0 for root tasks
+        // Level IDs will be set by backend
+        level1ID: 0,
+        level2ID: 0,
+        level3ID: 0,
+        level4ID: 0,
+        assignee1ID: 0,
+        assignee2ID: 0,
+        assignee3ID: 0,
+        estHours: 0,
+        estPrevHours: [],
+        actHours: 0,
+        isExceeded: 0,
+        info: {},
+        description: ''
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTaskPayload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create task');
-      }
-
-      const createdTask = await response.json();
-      
-      // Update the local state with the new task
-      setProjects(prevProjects => {
-        return prevProjects.map(project => {
-          if (project.id === projectId) {
-            return {
-              ...project,
-              tasks: [
-                ...project.tasks,
-                {
-                  id: createdTask.id.toString(),
-                  name: createdTask.name,
-                  assignee: null,
-                  dueDate: null,
-                  priority: "normal" as Priority,
-                  status: "todo" as Status,
-                  comments: "",
-                  estimatedTime: null,
-                  timeSpent: 0,
-                  expanded: true,
-                  subtasks: []
-                }
-              ]
-            };
-          }
-          return project;
+        const response = await fetch('http://localhost:5000/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newTaskPayload)
         });
-      });
 
-      toast.success('Task created successfully');
-      return createdTask;
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to create task');
+        }
+
+        const createdTask = await response.json();
+
+        // Instead of manually updating state, refresh tasks from backend
+        await fetchTasks(projectId);
+
+        toast.success('Task created successfully');
+        return createdTask;
     } catch (err) {
-      console.error('Error adding task:', err);
-      toast.error('Failed to create task');
-      throw err;
+        console.error('Error adding task:', err);
+        toast.error('Failed to create task');
+        throw err;
     }
-  };
+};
+
 
   const updateTask = async (projectId: string, taskId: string, updates: Partial<Task>) => {
     try {
@@ -354,8 +344,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       if (!response.ok) throw new Error('Failed to update task');
 
       const updatedTask = await response.json();
-      
-      // Update the local state with the updated task
+
       setProjects(projects.map(project => {
         if (project.id === projectId) {
           return {
@@ -378,9 +367,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
         method: 'DELETE',
       });
-  
+
       if (!response.ok) throw new Error('Failed to delete task');
-  
+
       setProjects(projects.map(project => {
         if (project.id === projectId) {
           return {
@@ -395,43 +384,41 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       throw err;
     }
   };
-  
-  
 
-  const addSubtask = (projectId: string, taskId: string, name: string) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: [
-                  ...task.subtasks,
-                  {
-                    id: `st${Date.now()}`,
-                    name,
-                    assignee: null,
-                    dueDate: null,
-                    priority: "normal" as Priority,
-                    status: "todo" as Status,
-                    comments: "",
-                    estimatedTime: null,
-                    timeSpent: 0,
-                    expanded: true,
-                    actionItems: []
-                  }
-                ]
-              };
-            }
-            return task;
-          })
+
+
+  const addSubtask = async (projectId: string, parentTaskId: string, name: string) => {
+    try {
+        const parentTask = selectedProject?.tasks.find(t => t.id === parentTaskId);
+        if (!parentTask) throw new Error('Parent task not found');
+
+        const newSubtaskPayload = {
+            name,
+            wsID: 1,
+            userID: 1,
+            projectID: parseInt(projectId),
+            taskLevel: 2,
+            status: 'TODO',
+            parentID: parseInt(parentTaskId),
+            // Level IDs will be set by backend
         };
-      }
-      return project;
-    }));
-  };
+
+        const response = await fetch('http://localhost:5000/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newSubtaskPayload)
+        });
+
+        const createdSubtask = await response.json();
+        await fetchTasks(projectId); // Refresh tasks after creation
+        toast.success('Subtask created successfully');
+        return createdSubtask;
+    } catch (err) {
+        console.error('Error adding subtask:', err);
+        toast.error('Failed to create subtask');
+        throw err;
+    }
+};
 
   const updateSubtask = (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
     setProjects(projects.map(project => {
@@ -475,47 +462,33 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const addActionItem = (projectId: string, taskId: string, subtaskId: string, name: string) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask => {
-                  if (subtask.id === subtaskId) {
-                    return {
-                      ...subtask,
-                      actionItems: [
-                        ...subtask.actionItems,
-                        {
-                          id: `a${Date.now()}`,
-                          name,
-                          assignee: null,
-                          dueDate: null,
-                          priority: "normal" as Priority,
-                          status: "todo" as Status,
-                          comments: "",
-                          estimatedTime: null,
-                          timeSpent: 0,
-                          expanded: false,
-                          subactionItems: []
-                        }
-                      ]
-                    };
-                  }
-                  return subtask;
-                })
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
+  const addActionItem = async (projectId: string, taskId: string, subtaskId: string, name: string) => {
+    try {
+      const newActionItemPayload = {
+        name,
+        wsID: 1,
+        userID: 1,
+        projectID: parseInt(projectId),
+        taskLevel: 3,
+        status: 'TODO',
+        parentID: parseInt(subtaskId),
+      };
+
+      const response = await fetch('http://localhost:5000/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newActionItemPayload)
+      });
+
+      const createdActionItem = await response.json();
+      await fetchTasks(projectId); // Refresh tasks after creation
+      toast.success('Action item created successfully');
+      return createdActionItem;
+    } catch (err) {
+      console.error('Error adding action item:', err);
+      toast.error('Failed to create action item');
+      throw err;
+    }
   };
 
   const updateActionItem = (
@@ -582,53 +555,33 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const addSubactionItem = (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask => {
-                  if (subtask.id === subtaskId) {
-                    return {
-                      ...subtask,
-                      actionItems: subtask.actionItems.map(actionItem => {
-                        if (actionItem.id === actionItemId) {
-                          return {
-                            ...actionItem,
-                            subactionItems: [
-                              ...actionItem.subactionItems,
-                              {
-                                id: `sa${Date.now()}`,
-                                name,
-                                assignee: null,
-                                dueDate: null,
-                                priority: "normal" as Priority,
-                                status: "todo" as Status,
-                                comments: "",
-                                estimatedTime: null,
-                                timeSpent: 0
-                              }
-                            ]
-                          };
-                        }
-                        return actionItem;
-                      })
-                    };
-                  }
-                  return subtask;
-                })
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
+  const addSubactionItem = async (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string) => {
+    try {
+      const newSubactionPayload = {
+        name,
+        wsID: 1,
+        userID: 1,
+        projectID: parseInt(projectId),
+        taskLevel: 4,
+        status: 'TODO',
+        parentID: parseInt(actionItemId),
+      };
+
+      const response = await fetch('http://localhost:5000/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSubactionPayload)
+      });
+
+      const createdSubaction = await response.json();
+      await fetchTasks(projectId); // Refresh tasks after creation
+      toast.success('Subaction item created successfully');
+      return createdSubaction;
+    } catch (err) {
+      console.error('Error adding subaction item:', err);
+      toast.error('Failed to create subaction item');
+      throw err;
+    }
   };
 
   const updateSubactionItem = (
@@ -790,8 +743,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   const startTimer = (projectId: string, actionItemId: string) => {
     setTimer({
       projectId,
+      taskId: null,
+      subtaskId: null,
       actionItemId,
+      subactionItemId: null,
       startTime: new Date(),
+      isActive: true,
       isRunning: true
     });
   };
@@ -801,7 +758,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       const endTime = new Date();
       const timeSpent = Math.floor((endTime.getTime() - timer.startTime.getTime()) / 60000); // minutes
 
-      // Find the action item and update its time spent
       projects.forEach(project => {
         if (project.id === timer.projectId) {
           project.tasks.forEach(task => {
@@ -825,8 +781,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
     setTimer({
       projectId: null,
+      taskId: null,
+      subtaskId: null,
       actionItemId: null,
+      subactionItemId: null,
       startTime: null,
+      isActive: false,
       isRunning: false
     });
   };
