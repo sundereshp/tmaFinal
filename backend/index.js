@@ -147,7 +147,7 @@ app.get('/api/tasks', (req, res) => {
 // POST /api/tasks endpoint
 app.post('/api/tasks', (req, res) => {
     console.log('POST /api/tasks - Received body:', req.body);
-    
+
     const {
         wsID, userID, projectID, name, description = '',
         taskLevel = 1, status = 'TODO', parentID = 0,
@@ -194,7 +194,7 @@ app.post('/api/tasks', (req, res) => {
         const parentTask = project.tasks.find(t => t.id === newTask.parentID);
         if (!parentTask) return res.status(400).json({ error: 'Parent task not found' });
 
-        switch(taskLevel) {
+        switch (taskLevel) {
             case 2: // Subtask
                 newTask.level1ID = parentTask.level1ID;
                 newTask.level2ID = newTask.id;
@@ -237,15 +237,9 @@ app.get('/api/tasks/project/:projectId', (req, res) => {
 app.put('/api/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
     const updates = req.body;
-
-    // Find project containing the task
-    const project = projects.find(p =>
-        p.tasks.some(t => t.id === taskId)
-    );
-
-    if (!project) {
-        return res.status(404).json({ error: 'Task not found' });
-    }
+    
+    const project = projects.find(p => p.tasks.some(t => t.id === taskId));
+    if (!project) return res.status(404).json({ error: 'Task not found' });
 
     const taskIndex = project.tasks.findIndex(t => t.id === taskId);
     const updatedTask = {
@@ -254,7 +248,7 @@ app.put('/api/tasks/:id', (req, res) => {
         modifiedAt: new Date().toISOString()
     };
 
-    // Validate required fields
+    // Validation
     if (!updatedTask.wsID || !updatedTask.userID || !updatedTask.projectID || !updatedTask.name) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -266,43 +260,57 @@ app.put('/api/tasks/:id', (req, res) => {
 // DELETE task
 app.delete('/api/tasks/:id', (req, res) => {
     const taskId = parseInt(req.params.id);
+    
+    const project = projects.find(p => p.tasks.some(t => t.id === taskId));
+    if (!project) return res.status(404).json({ error: 'Task not found' });
 
-    // Find project containing the task
-    const projectIndex = projects.findIndex(p =>
-        p.tasks.some(t => t.id === taskId)
-    );
+    const taskToDelete = project.tasks.find(t => t.id === taskId);
+    if (!taskToDelete) return res.status(404).json({ error: 'Task not found' });
 
-    if (projectIndex === -1) {
-        return res.status(404).json({ error: 'Task not found' });
-    }
+    const idsToDelete = new Set([taskId]);
 
-    // Remove task from project
-    projects[projectIndex].tasks = projects[projectIndex].tasks.filter(t => t.id !== taskId);
+    // Determine which level ID to match based on the deleted task's level
+    const levelMap = {
+        1: 'level1ID',
+        2: 'level2ID',
+        3: 'level3ID',
+        4: 'level4ID'
+    };
+    
+    const targetField = levelMap[taskToDelete.taskLevel];
+    
+    // First pass: Get direct children
+    project.tasks.forEach(t => {
+        if (t[targetField] === taskId) {
+            idsToDelete.add(t.id);
+        }
+    });
 
-    // Reassign IDs to maintain sequential order
-    reassignTaskIds();
+    // Subsequent passes: Find descendants of descendants
+    let currentSize;
+    do {
+        currentSize = idsToDelete.size;
+        project.tasks.forEach(t => {
+            if (idsToDelete.has(t[targetField]) && !idsToDelete.has(t.id)) {
+                idsToDelete.add(t.id);
+            }
+        });
+    } while (currentSize !== idsToDelete.size);
 
-    res.json({
+    // Delete all collected tasks
+    project.tasks = project.tasks.filter(t => !idsToDelete.has(t.id));
+    
+    res.json({ 
         success: true,
-        message: `Task ${taskId} deleted successfully`
+        deletedCount: idsToDelete.size
     });
 });
 
-// GET all tasks in a structured format
-app.get('/api/tasks/list', (req, res) => {
-    const allTasks = projects.reduce((acc, project) => {
-        return acc.concat(project.tasks.map(task => ({
-            ...task,
-            projectName: project.name,
-            projectID: project.id,
-            projectDescription: project.description,
-            projectStartDate: project.startDate,
-            projectEndDate: project.endDate
-        })));
-    }, []);
 
-    res.json(allTasks);
-});
+
+
+
+
 
 // Start server
 app.listen(PORT, () => {

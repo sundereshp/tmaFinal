@@ -14,6 +14,7 @@ import { CommentsCell } from "./CommentsCell";
 import { User } from "@/types/task";
 import { RowActions } from "./RowActions";
 import { EstimatedTimeCell } from "./EstimatedTimeCell";
+import { useTaskContext } from "@/context/TaskContext";
 
 interface TaskRowProps {
   task: Task;
@@ -34,8 +35,8 @@ interface TaskRowProps {
   toggleExpanded: (projectId: string, taskId: string, type: "task" | "subtask", subtaskId?: string) => void;
   updateTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
   handleSaveEdit: () => void;
-  handleDeleteItem: (id: string, type: 'task' | 'subtask' | 'actionItem' | 'subactionItem') => void;
-  handleAddItem: (type: 'task' | 'subtask' | 'actionItem' | 'subactionItem', parentTaskId?: string, parentSubtaskId?: string,parentActionItemId?: string) => void;
+  
+  handleAddItem: (type: 'task' | 'subtask' | 'actionItem' | 'subactionItem', parentTaskId?: string, parentSubtaskId?: string, parentActionItemId?: string) => void;
   startTimer?: (projectId: string, actionItemId: string) => void;
   stopTimer?: () => void;
 }
@@ -51,18 +52,17 @@ export function TaskRow({
   toggleExpanded,
   updateTask,
   handleSaveEdit,
-  handleDeleteItem,
   handleAddItem,
   startTimer,
   stopTimer
 }: TaskRowProps) {
   const [isHovered, setIsHovered] = useState(false);
-
+  const { deleteItem } = useTaskContext();
   const handleEditName = () => {
-    setEditingItem({ 
-      id: task.id, 
-      type: 'task', 
-      name: task.name 
+    setEditingItem({
+      id: task.id,
+      type: 'task',
+      name: task.name
     });
   };
 
@@ -71,7 +71,7 @@ export function TaskRow({
   };
 
   return (
-    <tr 
+    <tr
       className="task-row border-b border-gray-200 dark:border-gray-700 px-2"
       onMouseEnter={() => {
         setHoveredRowId(task.id);
@@ -220,8 +220,8 @@ export function TaskRow({
         />
       </td>
       <td>
-        <RowActions 
-          onDelete={() => handleDeleteItem(task.id, 'task')}
+        <RowActions
+          onDelete={() => deleteItem(selectedProjectId!, task.id)}
           showTimer={false}
         />
       </td>

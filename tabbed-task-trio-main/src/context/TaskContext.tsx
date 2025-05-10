@@ -26,20 +26,19 @@ interface TaskContextType {
   selectProject: (projectId: string | null) => void;
   addTask: (projectId: string, name: string) => void;
   updateTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
-  deleteTask: (projectId: string, taskId: string) => void;
   addSubtask: (projectId: string, taskId: string, name: string) => void;
   updateSubtask: (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => void;
-  deleteSubtask: (projectId: string, taskId: string, subtaskId: string) => void;
   addActionItem: (projectId: string, taskId: string, subtaskId: string, name: string) => void;
   updateActionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
-  deleteActionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string) => void;
   addSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string) => void;
   updateSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, subactionItemId: string, updates: Partial<SubactionItem>) => void;
-  deleteSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, subactionItemId: string) => void;
   toggleExpanded: (projectId: string, taskId: string, type: "task" | "subtask" | "actionItem", subtaskId?: string, actionItemId?: string) => void;
   startTimer: (projectId: string, actionItemId: string) => void;
+  deleteItem: (projectId: string, itemId: string) => void;
   stopTimer: () => void;
   getUserById: (id: string | null) => User | undefined;
+  updateItem: (itemId: string, updates: any) => void;
+  
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -283,54 +282,54 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   const addTask = async (projectId: string, name: string) => {
     const newTaskPayload = {
-        name,
-        wsID: 1,
-        userID: 1,
-        projectID: parseInt(projectId),
-        taskLevel: 1,  // Level 1 task
-        status: 'TODO',
-        parentID: 0,  // Parent ID should be 0 for root tasks
-        // Level IDs will be set by backend
-        level1ID: 0,
-        level2ID: 0,
-        level3ID: 0,
-        level4ID: 0,
-        assignee1ID: 0,
-        assignee2ID: 0,
-        assignee3ID: 0,
-        estHours: 0,
-        estPrevHours: [],
-        actHours: 0,
-        isExceeded: 0,
-        info: {},
-        description: ''
+      name,
+      wsID: 1,
+      userID: 1,
+      projectID: parseInt(projectId),
+      taskLevel: 1,  // Level 1 task
+      status: 'TODO',
+      parentID: 0,  // Parent ID should be 0 for root tasks
+      // Level IDs will be set by backend
+      level1ID: 0,
+      level2ID: 0,
+      level3ID: 0,
+      level4ID: 0,
+      assignee1ID: 0,
+      assignee2ID: 0,
+      assignee3ID: 0,
+      estHours: 0,
+      estPrevHours: [],
+      actHours: 0,
+      isExceeded: 0,
+      info: {},
+      description: ''
     };
 
     try {
-        const response = await fetch('http://localhost:5000/api/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newTaskPayload)
-        });
+      const response = await fetch('http://localhost:5000/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTaskPayload)
+      });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to create task');
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create task');
+      }
 
-        const createdTask = await response.json();
+      const createdTask = await response.json();
 
-        // Instead of manually updating state, refresh tasks from backend
-        await fetchTasks(projectId);
+      // Instead of manually updating state, refresh tasks from backend
+      await fetchTasks(projectId);
 
-        toast.success('Task created successfully');
-        return createdTask;
+      toast.success('Task created successfully');
+      return createdTask;
     } catch (err) {
-        console.error('Error adding task:', err);
-        toast.error('Failed to create task');
-        throw err;
+      console.error('Error adding task:', err);
+      toast.error('Failed to create task');
+      throw err;
     }
-};
+  };
 
 
   const updateTask = async (projectId: string, taskId: string, updates: Partial<Task>) => {
@@ -362,63 +361,39 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const deleteTask = async (projectId: string, taskId: string) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to delete task');
-
-      setProjects(projects.map(project => {
-        if (project.id === projectId) {
-          return {
-            ...project,
-            tasks: project.tasks.filter(task => task.id !== taskId)
-          };
-        }
-        return project;
-      }));
-    } catch (err) {
-      console.error('Error deleting task:', err);
-      throw err;
-    }
-  };
-
-
 
   const addSubtask = async (projectId: string, parentTaskId: string, name: string) => {
     try {
-        const parentTask = selectedProject?.tasks.find(t => t.id === parentTaskId);
-        if (!parentTask) throw new Error('Parent task not found');
+      const parentTask = selectedProject?.tasks.find(t => t.id === parentTaskId);
+      if (!parentTask) throw new Error('Parent task not found');
 
-        const newSubtaskPayload = {
-            name,
-            wsID: 1,
-            userID: 1,
-            projectID: parseInt(projectId),
-            taskLevel: 2,
-            status: 'TODO',
-            parentID: parseInt(parentTaskId),
-            // Level IDs will be set by backend
-        };
+      const newSubtaskPayload = {
+        name,
+        wsID: 1,
+        userID: 1,
+        projectID: parseInt(projectId),
+        taskLevel: 2,
+        status: 'TODO',
+        parentID: parseInt(parentTaskId),
+        // Level IDs will be set by backend
+      };
 
-        const response = await fetch('http://localhost:5000/api/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newSubtaskPayload)
-        });
+      const response = await fetch('http://localhost:5000/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSubtaskPayload)
+      });
 
-        const createdSubtask = await response.json();
-        await fetchTasks(projectId); // Refresh tasks after creation
-        toast.success('Subtask created successfully');
-        return createdSubtask;
+      const createdSubtask = await response.json();
+      await fetchTasks(projectId); // Refresh tasks after creation
+      toast.success('Subtask created successfully');
+      return createdSubtask;
     } catch (err) {
-        console.error('Error adding subtask:', err);
-        toast.error('Failed to create subtask');
-        throw err;
+      console.error('Error adding subtask:', err);
+      toast.error('Failed to create subtask');
+      throw err;
     }
-};
+  };
 
   const updateSubtask = (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
     setProjects(projects.map(project => {
@@ -442,25 +417,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const deleteSubtask = (projectId: string, taskId: string, subtaskId: string) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.filter(subtask => subtask.id !== subtaskId)
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
-  };
+
 
   const addActionItem = async (projectId: string, taskId: string, subtaskId: string, name: string) => {
     try {
@@ -527,33 +484,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const deleteActionItem = (projectId: string, taskId: string, subtaskId: string, actionItemId: string) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask => {
-                  if (subtask.id === subtaskId) {
-                    return {
-                      ...subtask,
-                      actionItems: subtask.actionItems.filter(actionItem => actionItem.id !== actionItemId)
-                    };
-                  }
-                  return subtask;
-                })
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
-  };
 
   const addSubactionItem = async (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string) => {
     try {
@@ -628,50 +558,45 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       return project;
     }));
   };
+  const updateItem = async (itemId: string, updates: any) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/tasks/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
 
-  const deleteSubactionItem = (
-    projectId: string,
-    taskId: string,
-    subtaskId: string,
-    actionItemId: string,
-    subactionItemId: string
-  ) => {
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask => {
-                  if (subtask.id === subtaskId) {
-                    return {
-                      ...subtask,
-                      actionItems: subtask.actionItems.map(actionItem => {
-                        if (actionItem.id === actionItemId) {
-                          return {
-                            ...actionItem,
-                            subactionItems: actionItem.subactionItems.filter(
-                              subactionItem => subactionItem.id !== subactionItemId
-                            )
-                          };
-                        }
-                        return actionItem;
-                      })
-                    };
-                  }
-                  return subtask;
-                })
-              };
-            }
-            return task;
-          })
-        };
+      if (!response.ok) throw new Error('Failed to update item');
+
+      // Refresh tasks after update
+      if (selectedProjectId) {
+        await fetchTasks(selectedProjectId);
       }
-      return project;
-    }));
+    } catch (err) {
+      console.error('Error updating item:', err);
+      throw err;
+    }
   };
+  // Unified delete function for all levels
+  const deleteItem = async (projectId: string, itemId: string) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/tasks/${itemId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete item');
+
+      // Refresh tasks from backend
+      await fetchTasks(projectId);
+
+      toast.success('Item and all related subitems deleted successfully');
+    } catch (err) {
+      console.error('Error deleting item:', err);
+      toast.error('Failed to delete item');
+      throw err;
+    }
+  };
+
 
   const toggleExpanded = (projectId: string, taskId: string, type: "task" | "subtask" | "actionItem", subtaskId?: string, actionItemId?: string) => {
     setProjects(projects.map(project => {
@@ -810,20 +735,18 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       selectProject,
       addTask,
       updateTask,
-      deleteTask,
       addSubtask,
       updateSubtask,
-      deleteSubtask,
       addActionItem,
       updateActionItem,
-      deleteActionItem,
       addSubactionItem,
       updateSubactionItem,
-      deleteSubactionItem,
+      deleteItem,
       toggleExpanded,
       startTimer,
       stopTimer,
-      getUserById
+      getUserById,
+      updateItem
     }}>
       {children}
     </TaskContext.Provider>

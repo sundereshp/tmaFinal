@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
+import { useTaskContext } from "../../context/TaskContext";
 
 interface SubactionItemRowProps {
   subactionItem: SubactionItem;
@@ -36,7 +37,6 @@ interface SubactionItemRowProps {
   } | null) => void;
   updateSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, subactionItemId: string, updates: Partial<SubactionItem>) => void;
   handleSaveEdit: () => void;
-  handleDeleteItem: (id: string, type: 'task' | 'subtask' | 'actionItem' | 'subactionItem') => void;
   startTimer: (projectId: string, actionItemId: string) => void;
   stopTimer: () => void;
 }
@@ -55,12 +55,11 @@ export function SubactionItemRow({
   setEditingItem,
   updateSubactionItem,
   handleSaveEdit,
-  handleDeleteItem,
   startTimer,
   stopTimer
 }: SubactionItemRowProps) {
   const [isHovered, setIsHovered] = useState(false);
-  
+  const { deleteItem } = useTaskContext();
   const handleUpdateTime = (estimatedTime: { days?: number; hours: number; minutes: number } | null) => {
     updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { estimatedTime });
   };
@@ -211,7 +210,7 @@ export function SubactionItemRow({
       </td>
       <td>
         <RowActions 
-          onDelete={() => handleDeleteItem(subactionItem.id, 'subactionItem')}
+          onDelete={() => deleteItem(selectedProjectId, subactionItem.id)}
           onStartTimer={handleTimerToggle}
           isTimerActive={isActiveTimer}
         />

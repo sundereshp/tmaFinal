@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { EstimatedTimeCell } from "./EstimatedTimeCell";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useTaskContext } from "@/context/TaskContext";
 
 interface SubtaskRowProps {
   subtask: Subtask;
@@ -51,12 +52,11 @@ export function SubtaskRow({
   toggleExpanded,
   updateSubtask,
   handleSaveEdit,
-  handleDeleteItem,
   handleAddItem,
   handleStartTimer
 }: SubtaskRowProps) {
   const [isHovered, setIsHovered] = useState(false);
-
+  const { deleteItem } = useTaskContext();
   const handleEditName = () => {
     setEditingItem({ 
       id: subtask.id, 
@@ -221,7 +221,7 @@ export function SubtaskRow({
       </td>
       <td>
         <RowActions 
-          onDelete={() => handleDeleteItem(subtask.id, 'subtask')}
+          onDelete={() => deleteItem(selectedProjectId, subtask.id)}
           onStartTimer={() => handleStartTimer(taskId, subtask.id)}
           showTimer={true}
         />
