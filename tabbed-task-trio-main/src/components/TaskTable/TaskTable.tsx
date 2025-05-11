@@ -12,7 +12,8 @@ import { NewItemRow } from "./NewItemRow";
 import { TimerDialog } from "./TimerDialog";
 import { EmptyState } from "./EmptyState";
 import React from "react";
-
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 export function TaskTable() {
   const {
     selectedProject,
@@ -45,6 +46,7 @@ export function TaskTable() {
     parentSubtaskId?: string;
     parentActionItemId?: string;
     name: string;
+    status?: Status;
     fromExpand?: boolean;
   } | null>(null);
 
@@ -104,6 +106,28 @@ export function TaskTable() {
   // Ensure tasks is always an array
   const tasks = selectedProject?.tasks || [];
 
+  // Group tasks by status
+  const groupedTasks = tasks.reduce((acc, task) => {
+    const status = task.status.toLowerCase();
+    if (!acc[status]) acc[status] = [];
+    acc[status].push(task);
+    return acc;
+  }, {} as Record<string, Task[]>);
+
+  // Define the order of status tables
+  const statusOrder: Status[] = ['todo', 'inprogress', 'complete', 'review', 'closed', 'backlog', 'clarification'];
+
+  // Status display names
+  const statusDisplayNames: Record<Status, string> = {
+    todo: 'To Do',
+    inprogress: 'In Progress',
+    complete: 'Complete',
+    review: 'Review',
+    closed: 'Closed',
+    backlog: 'Backlog',
+    clarification: 'Clarification Needed'
+  };
+
   const handleSaveEdit = async () => {
     try {
       await updateItem(editingItem?.id, { name: editingItem?.name });
@@ -117,22 +141,27 @@ export function TaskTable() {
     type: 'task' | 'subtask' | 'actionItem' | 'subactionItem',
     parentTaskId?: string,
     parentSubtaskId?: string,
-    parentActionItemId?: string
+    parentActionItemId?: string,
+    status?: Status
   ) => {
-    if (!selectedProject) return;
+    console.log('handleAddItem called with:', { type, parentTaskId, parentSubtaskId, parentActionItemId, status });
+    if (!selectedProject) {
+      console.error('No project selected');
+      return;
+    }
 
     // Auto-expand all relevant parents when adding a new item
     if (type === 'subtask' && parentTaskId) {
-      // When adding a subtask, expand the parent task
+      console.log('Expanding parent task:', parentTaskId);
       updateTask(selectedProject.id, parentTaskId, { expanded: true });
     } 
     else if (type === 'actionItem' && parentTaskId && parentSubtaskId) {
-      // When adding an action item, expand both parent task and subtask
+      console.log('Expanding parent task and subtask:', parentTaskId, parentSubtaskId);
       updateTask(selectedProject.id, parentTaskId, { expanded: true });
       updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
     } 
     else if (type === 'subactionItem' && parentTaskId && parentSubtaskId && parentActionItemId) {
-      // When adding a subaction item, expand all parents
+      console.log('Expanding parent task, subtask, and action item:', parentTaskId, parentSubtaskId, parentActionItemId);
       updateTask(selectedProject.id, parentTaskId, { expanded: true });
       updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
       updateActionItem(
@@ -144,23 +173,27 @@ export function TaskTable() {
       );
     }
 
-    setNewItemState({
+    const newItem = {
       type,
       parentTaskId,
       parentSubtaskId,
       parentActionItemId,
-      name: ''
-    });
+      name: '',
+      status
+    };
+    
+    console.log('Setting newItemState:', newItem);
+    setNewItemState(newItem);
   };
 
   const handleSaveNewItem = async () => {
     if (!newItemState || !selectedProject || !newItemState.name.trim()) return;
 
-    const { type, parentTaskId, parentSubtaskId, parentActionItemId, name } = newItemState;
+    const { type, parentTaskId, parentSubtaskId, parentActionItemId, name, status } = newItemState;
 
     try {
       if (type === 'task') {
-        await addTask(selectedProject.id, name);
+        await addTask(selectedProject.id, name, status);
       } else if (type === 'subtask' && parentTaskId) {
         await addSubtask(selectedProject.id, parentTaskId, name);
         // Ensure parent task stays expanded
@@ -262,6 +295,7 @@ export function TaskTable() {
 
     startTimer(selectedProject.id, timerDialogData.selectedActionItemId);
     setIsTimerDialogOpen(false);
+    setTimerDialogData(null);
     toast.success("Timer started");
   };
 
@@ -288,268 +322,318 @@ export function TaskTable() {
         projectName={selectedProject?.name || ""}
         fontSize={fontSize}
         adjustFontSize={adjustFontSize}
-        onAddTask={() => handleAddItem('task')}
         timer={timer}
         selectedProjectId={selectedProject?.id || ""}
         onStopTimer={handleStopTimer}
       />
-      <div className="bg-background rounded-md shadow overflow-hidden">
-        <table className="w-full border-separate border-spacing-0 border border-gray-200 dark:border-gray-700" style={{ tableLayout: 'fixed' }}>
-          <colgroup>
-            <col style={{ width: '300px' }} />
-            <col style={{ width: '100px' }} />
-            <col style={{ width: '120px' }} />
-            <col style={{ width: '100px' }} />
-            <col style={{ width: '100px' }} />
-            <col style={{ width: '150px' }} />
-            <col style={{ width: '100px' }} />
-            <col style={{ width: '60px' }} />
-          </colgroup>
-          <TableHead />
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {tasks.length === 0 && !newItemState ? (
-              <tr>
-                <td colSpan={8} className="px-2 py-1 text-center text-gray-500">
-                  No tasks found. Add a new task to get started.
-                </td>
-              </tr>
-            ) : (
-              <>
-                {newItemState && newItemState.type === 'task' && (
-                  <tr>
-                    <td colSpan={8}>
-                      <NewItemRow
-                        type="task"
-                        name={newItemState.name}
-                        setName={(name) => setNewItemState({ ...newItemState, name })}
-                        onSave={handleSaveNewItem}
-                        onCancel={() => setNewItemState(null)}
-                        newItemState={newItemState}
-                        selectedProject={selectedProject}
-                        addTask={addTask}
-                        addSubtask={addSubtask}
-                        addActionItem={addActionItem}
-                        addSubactionItem={addSubactionItem}
-                        updateTask={updateTask}
-                        updateSubtask={updateSubtask}
-                        updateActionItem={updateActionItem}
-                        setNewItemState={setNewItemState}
-                        toast={toast}
-                      />
-                    </td>
-                  </tr>
-                )}
-                {tasks.map((task) => (
-                  <React.Fragment key={`task-${task.id}`}>
-                    <TaskRow
-                      task={task}
-                      users={users}
-                      selectedProjectId={selectedProject?.id || ''}
-                      hoveredRowId={hoveredRowId}
-                      setHoveredRowId={setHoveredRowId}
-                      editingItem={editingItem}
-                      setEditingItem={setEditingItem}
-                      toggleExpanded={toggleExpanded}
-                      updateTask={updateTask}
-                      handleSaveEdit={handleSaveEdit}
-                      handleAddItem={handleAddItem}
-                    />
-                    {task.expanded && (
-                      <>
-                        {newItemState &&
-                          newItemState.type === 'subtask' &&
-                          newItemState.parentTaskId === task.id && (
-                            <tr key={`new-subtask-${task.id}`}>
-                              <td colSpan={8}>
-                                <NewItemRow
-                                  type="subtask"
-                                  newItemState={newItemState}
-                                  selectedProject={selectedProject}
-                                  addTask={addTask}
-                                  addSubtask={addSubtask}
-                                  addActionItem={addActionItem}
-                                  addSubactionItem={addSubactionItem}
-                                  updateTask={updateTask}
-                                  updateSubtask={updateSubtask}
-                                  updateActionItem={updateActionItem}
-                                  setNewItemState={setNewItemState}
-                                  toast={toast}
-                                  name={newItemState.name}
-                                  setName={(name) => setNewItemState({ ...newItemState, name })}
-                                  onSave={handleSaveNewItem}
-                                  onCancel={() => {
-                                    setNewItemState(null);
-                                    if (newItemState.fromExpand) {
-                                      toggleExpanded(selectedProject?.id || '', task.id, 'task');
-                                    }
-                                  }}
-                                  parentTaskId={task.id}
-                                />
-                              </td>
-                            </tr>
-                          )}
-                        {task.subtasks?.map((subtask) => (
-                          <React.Fragment key={`subtask-${subtask.id}`}>
-                            <SubtaskRow
-                              subtask={subtask}
-                              taskId={task.id}
-                              users={users}
-                              selectedProjectId={selectedProject?.id || ''}
-                              hoveredRowId={hoveredRowId}
-                              setHoveredRowId={setHoveredRowId}
-                              editingItem={editingItem}
-                              setEditingItem={setEditingItem}
-                              toggleExpanded={toggleExpanded}
-                              updateSubtask={updateSubtask}
-                              handleSaveEdit={handleSaveEdit}
-                              handleDeleteItem={handleDeleteItem}
-                              handleAddItem={handleAddItem}
-                              handleStartTimer={handleStartTimer}
-                            />
-                            {subtask.expanded && (
-                              <>
-                                {newItemState &&
-                                  newItemState.type === 'actionItem' &&
-                                  newItemState.parentTaskId === task.id &&
-                                  newItemState.parentSubtaskId === subtask.id && (
-                                    <tr key={`new-action-item-${subtask.id}`}>
-                                      <td colSpan={8}>
-                                        <NewItemRow 
-                                          type="actionItem"
-                                          newItemState={newItemState}
-                                          selectedProject={selectedProject}
-                                          addTask={addTask}
-                                          addSubtask={addSubtask}
-                                          addActionItem={addActionItem}
-                                          addSubactionItem={addSubactionItem}
-                                          updateTask={updateTask}
-                                          updateSubtask={updateSubtask}
-                                          updateActionItem={updateActionItem}
-                                          setNewItemState={setNewItemState}
-                                          toast={toast}
-                                          name={newItemState.name}
-                                          setName={(name) => setNewItemState({ ...newItemState, name })}
-                                          onSave={handleSaveNewItem}
-                                          onCancel={() => {
-                                            setNewItemState(null);
-                                            if (newItemState.fromExpand) {
-                                              toggleExpanded(selectedProject?.id || '', task.id, 'subtask', subtask.id);
-                                            }
-                                          }}
-                                          parentTaskId={task.id}
-                                          parentSubtaskId={subtask.id}
-                                        />
-                                      </td>
-                                    </tr>
-                                  )}
-                                {subtask.actionItems?.map((actionItem) => (
-                                  <React.Fragment key={`action-item-${actionItem.id}`}>
-                                    <ActionItemRow
-                                      actionItem={actionItem}
-                                      taskId={task.id}
-                                      subtaskId={subtask.id}
-                                      isActiveTimer={timer?.actionItemId === actionItem.id}
-                                      users={users}
-                                      selectedProjectId={selectedProject?.id || ''}
-                                      hoveredRowId={hoveredRowId}
-                                      setHoveredRowId={setHoveredRowId}
-                                      editingItem={editingItem}
-                                      setEditingItem={setEditingItem}
-                                      toggleExpanded={handleToggleActionItemExpand}
-                                      updateActionItem={updateActionItem}
-                                      handleSaveEdit={handleSaveEdit}
-                                      handleAddItem={handleAddItem}
-                                      startTimer={handleStartTimer}
-                                      stopTimer={handleStopTimer}
-                                    />
-                                    {actionItem.expanded && (
-                                      <>
-                                        {newItemState &&
-                                          newItemState.type === 'subactionItem' &&
-                                          newItemState.parentTaskId === task.id &&
-                                          newItemState.parentSubtaskId === subtask.id &&
-                                          newItemState.parentActionItemId === actionItem.id && (
-                                            <tr key={`new-subaction-item-${actionItem.id}`}>
-                                              <td colSpan={8}>
-                                                <NewItemRow 
-                                                  type="subactionItem"
-                                                  newItemState={newItemState}
-                                                  selectedProject={selectedProject}
-                                                  addTask={addTask}
-                                                  addSubtask={addSubtask}
-                                                  addActionItem={addActionItem}
-                                                  addSubactionItem={addSubactionItem}
-                                                  updateTask={updateTask}
-                                                  updateSubtask={updateSubtask}
-                                                  updateActionItem={updateActionItem}
-                                                  setNewItemState={setNewItemState}
-                                                  toast={toast}
-                                                  name={newItemState.name}
-                                                  setName={(name) => setNewItemState({ ...newItemState, name })}
-                                                  onSave={handleSaveNewItem}
-                                                  onCancel={() => {
-                                                    setNewItemState(null);
-                                                    if (newItemState.fromExpand) {
-                                                      updateActionItem(
-                                                        selectedProject?.id || '',
-                                                        task.id,
-                                                        subtask.id,
-                                                        actionItem.id,
-                                                        { expanded: false }
-                                                      );
-                                                    }
-                                                  }}
-                                                  parentTaskId={task.id}
-                                                  parentSubtaskId={subtask.id}
-                                                  parentActionItemId={actionItem.id}
-                                                />
-                                              </td>
-                                            </tr>
-                                          )}
-                                        {actionItem.subactionItems?.map((subactionItem) => (
-                                          <SubactionItemRow
-                                            key={`subaction-item-${subactionItem.id}`}
-                                            subactionItem={subactionItem}
+      
+      <div className="space-y-8">
+        {statusOrder.map((status) => {
+          const tasksForStatus = groupedTasks[status] || [];
+          if (status !== 'todo' && tasksForStatus.length === 0) return null;
+
+          return (
+            <div key={status} className="bg-background rounded-md shadow overflow-hidden">
+              {/* Status Header */}
+              <div className="flex items-center justify-between px-4 py-2 border-b">
+                <h2 className="text-lg font-semibold capitalize">
+                  {statusDisplayNames[status]}
+                </h2>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddItem('task', undefined, undefined, undefined, 'todo')} // Explicitly set status
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add Task
+                </Button>
+              </div>
+
+              {/* Table */}
+              <table className="w-full border-separate border-spacing-0 border border-gray-200 dark:border-gray-700" style={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '300px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '120px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '150px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '60px' }} />
+                </colgroup>
+                <TableHead />
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {/* Show NewItemRow if it matches the current status */}
+                  {newItemState?.type === 'task' && newItemState.status === status && (
+                    <tr>
+                      <td colSpan={8}>
+                        <NewItemRow
+                          type="task"
+                          name={newItemState.name}
+                          setName={(name) => setNewItemState({ ...newItemState, name })}
+                          onSave={handleSaveNewItem}
+                          onCancel={() => setNewItemState(null)}
+                          newItemState={newItemState}
+                          selectedProject={selectedProject}
+                          addTask={addTask}
+                          addSubtask={addSubtask}
+                          addActionItem={addActionItem}
+                          addSubactionItem={addSubactionItem}
+                          updateTask={updateTask}
+                          updateSubtask={updateSubtask}
+                          updateActionItem={updateActionItem}
+                          setNewItemState={setNewItemState}
+                          toast={toast}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  
+                  {tasksForStatus.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-2 py-1 text-center text-gray-500">
+                        No tasks in this status.
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {tasksForStatus.map((task) => (
+                        <React.Fragment key={`task-${task.id}`}>
+                          <TaskRow
+                            task={task}
+                            users={users}
+                            selectedProjectId={selectedProject?.id || ''}
+                            hoveredRowId={hoveredRowId}
+                            setHoveredRowId={setHoveredRowId}
+                            editingItem={editingItem}
+                            setEditingItem={setEditingItem}
+                            toggleExpanded={toggleExpanded}
+                            updateTask={updateTask}
+                            handleSaveEdit={handleSaveEdit}
+                            handleAddItem={handleAddItem}
+                          />
+                          {task.expanded && (
+                            <>
+                              {newItemState &&
+                                newItemState.type === 'subtask' &&
+                                newItemState.parentTaskId === task.id && (
+                                  <tr key={`new-subtask-${task.id}`}>
+                                    <td colSpan={8}>
+                                      <NewItemRow
+                                        type="subtask"
+                                        newItemState={newItemState}
+                                        selectedProject={selectedProject}
+                                        addTask={addTask}
+                                        addSubtask={addSubtask}
+                                        addActionItem={addActionItem}
+                                        addSubactionItem={addSubactionItem}
+                                        updateTask={updateTask}
+                                        updateSubtask={updateSubtask}
+                                        updateActionItem={updateActionItem}
+                                        setNewItemState={setNewItemState}
+                                        toast={toast}
+                                        name={newItemState.name}
+                                        setName={(name) => setNewItemState({ ...newItemState, name })}
+                                        onSave={handleSaveNewItem}
+                                        onCancel={() => {
+                                          setNewItemState(null);
+                                          if (newItemState.fromExpand) {
+                                            toggleExpanded(selectedProject?.id || '', task.id, 'task');
+                                          }
+                                        }}
+                                        parentTaskId={task.id}
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
+                              {task.subtasks?.map((subtask) => (
+                                <React.Fragment key={`subtask-${subtask.id}`}>
+                                  <SubtaskRow
+                                    subtask={subtask}
+                                    taskId={task.id}
+                                    users={users}
+                                    selectedProjectId={selectedProject?.id || ''}
+                                    hoveredRowId={hoveredRowId}
+                                    setHoveredRowId={setHoveredRowId}
+                                    editingItem={editingItem}
+                                    setEditingItem={setEditingItem}
+                                    toggleExpanded={toggleExpanded}
+                                    updateSubtask={(projectId, taskId, subtaskId, updates) => {
+                                      // Ensure status changes update the task's status
+                                      if (updates.status) {
+                                        updateTask(projectId, taskId, { status: updates.status });
+                                      }
+                                      return updateSubtask(projectId, taskId, subtaskId, updates);
+                                    }}
+                                    handleSaveEdit={handleSaveEdit}
+                                    handleDeleteItem={handleDeleteItem}
+                                    handleAddItem={handleAddItem}
+                                    handleStartTimer={handleStartTimer}
+                                  />
+                                  {subtask.expanded && (
+                                    <>
+                                      {newItemState &&
+                                        newItemState.type === 'actionItem' &&
+                                        newItemState.parentTaskId === task.id &&
+                                        newItemState.parentSubtaskId === subtask.id && (
+                                          <tr key={`new-action-item-${subtask.id}`}>
+                                            <td colSpan={8}>
+                                              <NewItemRow 
+                                                type="actionItem"
+                                                newItemState={newItemState}
+                                                selectedProject={selectedProject}
+                                                addTask={addTask}
+                                                addSubtask={addSubtask}
+                                                addActionItem={addActionItem}
+                                                addSubactionItem={addSubactionItem}
+                                                updateTask={updateTask}
+                                                updateSubtask={updateSubtask}
+                                                updateActionItem={updateActionItem}
+                                                setNewItemState={setNewItemState}
+                                                toast={toast}
+                                                name={newItemState.name}
+                                                setName={(name) => setNewItemState({ ...newItemState, name })}
+                                                onSave={handleSaveNewItem}
+                                                onCancel={() => {
+                                                  setNewItemState(null);
+                                                  if (newItemState.fromExpand) {
+                                                    toggleExpanded(selectedProject?.id || '', task.id, 'subtask', subtask.id);
+                                                  }
+                                                }}
+                                                parentTaskId={task.id}
+                                                parentSubtaskId={subtask.id}
+                                              />
+                                            </td>
+                                          </tr>
+                                        )}
+                                      {subtask.actionItems?.map((actionItem) => (
+                                        <React.Fragment key={`action-item-${actionItem.id}`}>
+                                          <ActionItemRow
+                                            actionItem={actionItem}
                                             taskId={task.id}
                                             subtaskId={subtask.id}
-                                            actionItemId={actionItem.id}
-                                            isActiveTimer={timer?.subactionItemId === subactionItem.id}
+                                            isActiveTimer={timer?.actionItemId === actionItem.id}
                                             users={users}
                                             selectedProjectId={selectedProject?.id || ''}
                                             hoveredRowId={hoveredRowId}
                                             setHoveredRowId={setHoveredRowId}
                                             editingItem={editingItem}
                                             setEditingItem={setEditingItem}
-                                            updateSubactionItem={updateSubactionItem}
+                                            toggleExpanded={handleToggleActionItemExpand}
+                                            updateActionItem={updateActionItem}
                                             handleSaveEdit={handleSaveEdit}
+                                            handleAddItem={handleAddItem}
                                             startTimer={handleStartTimer}
                                             stopTimer={handleStopTimer}
                                           />
-                                        ))}
-                                      </>
-                                    )}
-                                  </React.Fragment>
-                                ))}
-                              </>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
-              </>
-            )}
-          </tbody>
-        </table>
+                                          {actionItem.expanded && (
+                                            <>
+                                              {newItemState &&
+                                                newItemState.type === 'subactionItem' &&
+                                                newItemState.parentTaskId === task.id &&
+                                                newItemState.parentSubtaskId === subtask.id &&
+                                                newItemState.parentActionItemId === actionItem.id && (
+                                                  <tr key={`new-subaction-item-${actionItem.id}`}>
+                                                    <td colSpan={8}>
+                                                      <NewItemRow 
+                                                        type="subactionItem"
+                                                        newItemState={newItemState}
+                                                        selectedProject={selectedProject}
+                                                        addTask={addTask}
+                                                        addSubtask={addSubtask}
+                                                        addActionItem={addActionItem}
+                                                        addSubactionItem={addSubactionItem}
+                                                        updateTask={updateTask}
+                                                        updateSubtask={updateSubtask}
+                                                        updateActionItem={updateActionItem}
+                                                        setNewItemState={setNewItemState}
+                                                        toast={toast}
+                                                        name={newItemState.name}
+                                                        setName={(name) => setNewItemState({ ...newItemState, name })}
+                                                        onSave={handleSaveNewItem}
+                                                        onCancel={() => {
+                                                          setNewItemState(null);
+                                                          if (newItemState.fromExpand) {
+                                                            updateActionItem(
+                                                              selectedProject?.id || '',
+                                                              task.id,
+                                                              subtask.id,
+                                                              actionItem.id,
+                                                              { expanded: false }
+                                                            );
+                                                          }
+                                                        }}
+                                                        parentTaskId={task.id}
+                                                        parentSubtaskId={subtask.id}
+                                                        parentActionItemId={actionItem.id}
+                                                      />
+                                                    </td>
+                                                  </tr>
+                                                )}
+                                              {actionItem.subactionItems?.map((subactionItem) => (
+                                                <SubactionItemRow
+                                                  key={`subaction-item-${subactionItem.id}`}
+                                                  subactionItem={subactionItem}
+                                                  taskId={task.id}
+                                                  subtaskId={subtask.id}
+                                                  actionItemId={actionItem.id}
+                                                  isActiveTimer={timer?.subactionItemId === subactionItem.id}
+                                                  users={users}
+                                                  selectedProjectId={selectedProject?.id || ''}
+                                                  hoveredRowId={hoveredRowId}
+                                                  setHoveredRowId={setHoveredRowId}
+                                                  editingItem={editingItem}
+                                                  setEditingItem={setEditingItem}
+                                                  updateSubactionItem={updateSubactionItem}
+                                                  handleSaveEdit={handleSaveEdit}
+                                                  startTimer={handleStartTimer}
+                                                  stopTimer={handleStopTimer}
+                                                />
+                                              ))}
+                                            </>
+                                          )}
+                                        </React.Fragment>
+                                      ))}
+                                    </>
+                                  )}
+                                </React.Fragment>
+                              ))}
+                            </>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
       </div>
       <TimerDialog
-        open={timer?.isActive || false}
-        onClose={stopTimer}
-        taskId={timer?.taskId || ''}
-        subtaskId={timer?.subtaskId || ''}
-        actionItemId={timer?.actionItemId || ''}
-        subactionItemId={timer?.subactionItemId || ''}
+        open={isTimerDialogOpen}
+        onClose={() => {
+          setIsTimerDialogOpen(false);
+          setTimerDialogData(null);
+        }}
+        taskId={timerDialogData?.taskId || ''}
+        subtaskId={timerDialogData?.subtaskId || ''}
+        actionItemId={timerDialogData?.selectedActionItemId || ''}
+        subactionItemId=""
+        actionItems={timerDialogData?.actionItems || []}
+        onSelectActionItem={(actionItemId) => {
+          if (timerDialogData) {
+            setTimerDialogData({
+              ...timerDialogData,
+              selectedActionItemId: actionItemId
+            });
+          }
+        }}
+        onStartTimer={(actionItemId) => {
+          if (selectedProject && actionItemId) {
+            startTimer(selectedProject.id, actionItemId);
+            toast.success("Timer started");
+          }
+        }}
       />
     </div>
   );

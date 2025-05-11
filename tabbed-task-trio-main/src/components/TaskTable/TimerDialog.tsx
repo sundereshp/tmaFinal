@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { ActionItem } from "@/types/task";
 
 interface TimerDialogProps {
   open: boolean;
@@ -9,6 +12,9 @@ interface TimerDialogProps {
   subtaskId: string;
   actionItemId: string;
   subactionItemId: string;
+  actionItems?: ActionItem[];
+  onSelectActionItem?: (actionItemId: string) => void;
+  onStartTimer?: (actionItemId: string) => void;
 }
 
 export function TimerDialog({ 
@@ -17,7 +23,10 @@ export function TimerDialog({
   taskId, 
   subtaskId, 
   actionItemId, 
-  subactionItemId 
+  subactionItemId,
+  actionItems = [],
+  onSelectActionItem,
+  onStartTimer
 }: TimerDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(open) => {
@@ -25,50 +34,80 @@ export function TimerDialog({
     }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Timer</DialogTitle>
+          <DialogTitle>Start Timer</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
+          {actionItems.length > 0 && (
+            <div className="space-y-2">
+              <Label>Select Action Item</Label>
+              <Select
+                value={actionItemId}
+                onValueChange={(value) => {
+                  onSelectActionItem?.(value);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an action item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {actionItems.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Task ID</Label>
-            <input 
+            <Input 
               type="text" 
               value={taskId} 
               disabled 
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full"
             />
           </div>
+
           <div className="space-y-2">
             <Label>Subtask ID</Label>
-            <input 
+            <Input 
               type="text" 
               value={subtaskId} 
               disabled 
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full"
             />
           </div>
+
           <div className="space-y-2">
             <Label>Action Item ID</Label>
-            <input 
+            <Input 
               type="text" 
               value={actionItemId} 
               disabled 
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Subaction Item ID</Label>
-            <input 
-              type="text" 
-              value={subactionItemId} 
-              disabled 
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button onClick={onClose}>Stop Timer</Button>
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => {
+              onStartTimer?.(actionItemId);
+              onClose();
+            }}
+            disabled={!actionItemId}
+          >
+            Start Timer
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

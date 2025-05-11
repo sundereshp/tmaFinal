@@ -182,6 +182,11 @@ header {
   width: calc(100% - 0.5rem);
 }
 
+.inline-edit {
+  width: calc(100% - 40px) !important; /* Account for indentation */
+  margin-left: 8px;
+}
+
 .inline-edit:focus {
   border-color: hsl(var(--ring));
   outline: none;

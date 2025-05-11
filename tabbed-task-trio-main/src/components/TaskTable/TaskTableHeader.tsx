@@ -12,7 +12,6 @@ interface TaskTableHeaderProps {
   projectName: string;
   fontSize: number;
   adjustFontSize: (direction: 'increase' | 'decrease') => void;
-  onAddTask: () => void;
   timer: {
     isRunning: boolean;
     projectId: string | null;
@@ -26,7 +25,6 @@ export function TaskTableHeader({
   projectName,
   fontSize,
   adjustFontSize,
-  onAddTask,
   timer,
   selectedProjectId,
   onStopTimer
@@ -160,11 +158,6 @@ export function TaskTableHeader({
         </div>
       )}
 
-      <div>
-        <Button onClick={onAddTask}>
-          <Plus className="h-4 w-4 mr-1" /> Add Task
-        </Button>
-      </div>
     </div>
   );
 }
