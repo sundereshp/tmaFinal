@@ -187,8 +187,16 @@ export function TaskRow({
         <div className="truncate">
           <AssigneeCell
             users={users}
-            assigneeId={task.assignee}
-            onChange={(assignee) => updateTask(selectedProjectId, task.id, { assignee })}
+            assignees={[
+              task.assignee1ID || 0,
+              task.assignee2ID || 0,
+              task.assignee3ID || 0
+            ]}
+            onChange={(assignees) => updateTask(selectedProjectId, task.id, {
+              assignee1ID: assignees[0] || 0,
+              assignee2ID: assignees[1] || 0,
+              assignee3ID: assignees[2] || 0
+            })}
           />
         </div>
       </td>

@@ -196,8 +196,16 @@ export function ActionItemRow({
         <div className="truncate">
           <AssigneeCell
             users={users}
-            assigneeId={actionItem.assignee}
-            onChange={(assignee) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { assignee })}
+            assignees={[
+              actionItem.assignee1ID || 0,
+              actionItem.assignee2ID || 0,
+              actionItem.assignee3ID || 0
+            ]}
+            onChange={(assignees) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, {
+              assignee1ID: assignees[0] || 0,
+              assignee2ID: assignees[1] || 0,
+              assignee3ID: assignees[2] || 0
+            })}
           />
         </div>
       </td>

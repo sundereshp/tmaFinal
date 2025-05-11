@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import React, { useState } from 'react';
 import { User } from "@/types/task";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,84 +8,87 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 interface AssigneeCellProps {
   users: User[];
-  assigneeId: string[] | null;
-  onChange: (userId: string[] | null) => void;
+  assignees: number[]; // Array of numeric IDs [assignee1ID, assignee2ID, assignee3ID]
+  onChange: (assignees: number[]) => void;
   disabled?: boolean;
 }
 
-export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: AssigneeCellProps) {
+export function AssigneeCell({ users, assignees, onChange, disabled = false }: AssigneeCellProps) {
+  // Convert numeric IDs to strings for comparison
+  const assigneeIds = assignees.filter(id => id !== 0).map(id => id.toString());
+
+  const handleToggleUser = (userId: string) => {
+    const numericUserId = parseInt(userId);
+    let newAssignees = [...assignees.filter(id => id !== 0)];
+
+    if (newAssignees.includes(numericUserId)) {
+      newAssignees = newAssignees.filter(id => id !== numericUserId);
+    } else {
+      if (newAssignees.length >= 3) return;
+      newAssignees.push(numericUserId);
+    }
+
+    // Pad with zeros to maintain 3 slots
+    while (newAssignees.length < 3) newAssignees.push(0);
+    onChange(newAssignees);
+  };
+
+  // Remove zero values for display
+  const displayAssignees = assignees.filter(id => id !== 0);
+  const visibleAssignees = displayAssignees.slice(0, 3);
+  const additionalCount = displayAssignees.length - 3;
   const [isAdding, setIsAdding] = useState(false);
   const [showPopover, setShowPopover] = useState(false);
 
-  const handleToggleUser = (userId: string) => {
-    if (!assigneeId || !assigneeId.includes(userId)) {
-      // Check if we've reached the maximum number of assignees
-      if (assigneeId && assigneeId.length >= 3) {
-        return; // Don't allow adding more than 3 assignees
-      }
-      // Add user
-      const newAssignees = [...(assigneeId || []), userId];
-      onChange(newAssignees);
-    } else {
-      // Remove user
-      handleRemoveUser(userId);
-    }
-    setIsAdding(false);
-  };
-  
   const handleRemoveUser = (userId: string) => {
-    const newAssignees = assigneeId ? assigneeId.filter(id => id !== userId) : [];
-    onChange(newAssignees.length ? newAssignees : null);
+    const newAssignees = assignees.filter(id => id !== parseInt(userId));
+    onChange(newAssignees.length ? newAssignees : []);
   };
 
   // Function to generate initials from a name
   const getInitials = (name: string) => {
     return name.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2);
   };
-  
+
   // Function to generate a consistent color based on name
   const getColorForName = (name: string) => {
     const colors = [
-      "bg-red-500", "bg-blue-500", "bg-green-500", 
+      "bg-red-500", "bg-blue-500", "bg-green-500",
       "bg-yellow-500", "bg-purple-500", "bg-pink-500",
       "bg-indigo-500", "bg-teal-500", "bg-orange-500"
     ];
-    
+
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
+
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Ensure assigneeId is always an array
-  const assigneeArray = assigneeId ? (Array.isArray(assigneeId) ? assigneeId : [assigneeId]) : [];
-  const visibleAssignees = assigneeArray.slice(0, 3);
-  const additionalCount = assigneeArray.length - 3;
 
   return (
     <div className="flex flex-wrap gap-1 items-center justify-center min-h-[28px]">
       {/* Show assignee avatars */}
       {visibleAssignees.map(id => {
-        const user = users.find(u => u.id === id);
+        const user = users.find(u => u.id.toString() === id.toString());
         if (!user) return null;
-        
+
         return (
-          <div 
+          <div
             key={id}
             className={cn(
-              "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium cursor-pointer", 
+              "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium cursor-pointer",
               getColorForName(user.name)
             )}
-            onClick={() => !disabled && handleRemoveUser(id)}
+            onClick={() => !disabled && handleRemoveUser(id.toString())}
             title={user.name}
           >
             {getInitials(user.name)}
           </div>
         );
       })}
-      
+
       {/* Show +X button for additional assignees */}
       {additionalCount > 0 && (
         <Popover open={showPopover} onOpenChange={setShowPopover}>
@@ -100,15 +103,15 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
           <PopoverContent className="p-2 w-48 bg-white dark:bg-gray-800 z-50">
             <div className="text-sm font-medium mb-2">All Assignees</div>
             <div className="space-y-2">
-              {assigneeArray.slice(3).map(id => {
-                const user = users.find(u => u.id === id);
+              {assigneeIds.slice(3).map(id => {
+                const user = users.find(u => u.id.toString() === id);
                 if (!user) return null;
-                
+
                 return (
                   <div key={id} className="flex items-center gap-2">
-                    <div 
+                    <div
                       className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium", 
+                        "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium",
                         getColorForName(user.name)
                       )}
                     >
@@ -116,10 +119,10 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
                     </div>
                     <span className="text-sm">{user.name}</span>
                     {!disabled && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="ml-auto h-6 w-6 p-0" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto h-6 w-6 p-0"
                         onClick={() => handleRemoveUser(id)}
                       >
                         <X size={12} />
@@ -132,9 +135,9 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
           </PopoverContent>
         </Popover>
       )}
-      
+
       {/* Show + button to add assignee */}
-      {assigneeArray.length < 3 && !disabled && (
+      {assigneeIds.length < 3 && !disabled && (
         <Popover open={showPopover} onOpenChange={setShowPopover}>
           <PopoverTrigger asChild>
             <Button
@@ -154,10 +157,10 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
             <div className="text-sm font-medium mb-2">Select User</div>
             <div className="space-y-2">
               {users.map(user => (
-                <div key={user.id} className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleUser(user.id)}>
-                  <div 
+                <div key={user.id} className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleUser(user.id.toString())}>
+                  <div
                     className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium", 
+                      "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium",
                       getColorForName(user.name)
                     )}
                   >
@@ -170,7 +173,7 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
           </PopoverContent>
         </Popover>
       )}
-      
+
       {/* Select user dropdown */}
       {!disabled && isAdding && (
         <div className="flex items-center space-x-1">
@@ -185,13 +188,13 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-gray-800 z-50">
               {users.map(user => (
-                <SelectItem 
-                  key={user.id} 
-                  value={user.id}
+                <SelectItem
+                  key={user.id}
+                  value={user.id.toString()}
                   className="flex items-center gap-2"
                 >
                   <div className={cn(
-                    "w-4 h-4 rounded-full flex items-center justify-center text-white text-xs", 
+                    "w-4 h-4 rounded-full flex items-center justify-center text-white text-xs",
                     getColorForName(user.name)
                   )}>
                     {getInitials(user.name)}
@@ -201,11 +204,11 @@ export function AssigneeCell({ users, assigneeId, onChange, disabled = false }: 
               ))}
             </SelectContent>
           </Select>
-          
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            className="h-6 w-6 p-0" 
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
             onClick={() => setIsAdding(false)}
           >
             <X size={14} />

@@ -174,8 +174,16 @@ export function SubactionItemRow({
         <div className="truncate">
           <AssigneeCell
             users={users}
-            assigneeId={subactionItem.assignee}
-            onChange={(assignee) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { assignee })}
+            assignees={[
+              subactionItem.assignee1ID || 0,
+              subactionItem.assignee2ID || 0,
+              subactionItem.assignee3ID || 0
+            ]}
+            onChange={(assignees) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, {
+              assignee1ID: assignees[0] || 0,
+              assignee2ID: assignees[1] || 0,
+              assignee3ID: assignees[2] || 0
+            })}
           />
         </div>
       </td>

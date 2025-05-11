@@ -150,8 +150,16 @@ export function SubtaskRow({
         <div className="truncate">
           <AssigneeCell
             users={users}
-            assigneeId={subtask.assignee}
-            onChange={(assignee) => updateSubtask(selectedProjectId, taskId, subtask.id, { assignee })}
+            assignees={[
+              subtask.assignee1ID || 0,
+              subtask.assignee2ID || 0,
+              subtask.assignee3ID || 0
+            ]}
+            onChange={(assignees) => updateSubtask(selectedProjectId, taskId, subtask.id, {
+              assignee1ID: assignees[0] || 0,
+              assignee2ID: assignees[1] || 0,
+              assignee3ID: assignees[2] || 0
+            })}
           />
         </div>
       </td>
