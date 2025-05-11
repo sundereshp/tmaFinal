@@ -3,7 +3,7 @@ import React from 'react';
 export function TableHead() {
   return (
     <thead className="bg-muted">
-      <tr>
+      <tr className="border-b border-gray-200 dark:border-gray-700">
         <th className="px-2 py-1 text-left">Task Name</th>
         <th className="px-2 py-1 text-left">Assignee</th>
         <th className="px-2 py-1 text-left">Due Date</th>

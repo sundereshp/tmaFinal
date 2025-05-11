@@ -92,7 +92,10 @@ export function ActionItemRow({
           {/* Chevron Toggle */}
           <button
             className="toggler flex-shrink-0 mr-2"
-            onClick={() => toggleExpanded(selectedProjectId, taskId, subtaskId, actionItem.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpanded(selectedProjectId, taskId, subtaskId, actionItem.id);
+            }}
           >
             {actionItem.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </button>

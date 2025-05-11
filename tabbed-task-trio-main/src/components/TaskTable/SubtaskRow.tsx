@@ -87,7 +87,10 @@ export function SubtaskRow({
           <div className="flex-shrink-0 flex items-center">
             <button
               className="toggler mr-2"
-              onClick={() => toggleExpanded(selectedProjectId, taskId, 'subtask', subtask.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpanded(selectedProjectId, taskId, 'subtask', subtask.id);
+              }}
             >
               {subtask.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>

@@ -59,59 +59,6 @@ export function TaskTable() {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState<number>(15); // Default is 15px
 
-  // Handle toggle expanded behavior
-  const handleToggleExpand = (projectId: string, itemId: string, type: 'task' | 'subtask', subtaskId?: string) => {
-    if (!selectedProject) return;
-
-    if (type === 'task') {
-      const task = selectedProject.tasks.find(t => t.id === itemId);
-      if (!task) return;
-
-      if (task.expanded) {
-        // If already expanded, collapse
-        toggleExpanded(projectId, itemId, type);
-      } else {
-        // If not expanded, expand
-        toggleExpanded(projectId, itemId, type);
-
-        // If no subtasks, show input for creating one, but don't auto-create it
-        if (task.subtasks.length === 0) {
-          setNewItemState({
-            type: 'subtask',
-            parentTaskId: task.id,
-            name: '',
-            fromExpand: true
-          });
-        }
-      }
-    } else if (type === 'subtask' && subtaskId) {
-      const task = selectedProject.tasks.find(t => t.id === itemId);
-      if (!task) return;
-
-      const subtask = task.subtasks.find(s => s.id === subtaskId);
-      if (!subtask) return;
-
-      if (subtask.expanded) {
-        // If already expanded, collapse
-        toggleExpanded(projectId, itemId, type, subtaskId);
-      } else {
-        // If not expanded, expand
-        toggleExpanded(projectId, itemId, type, subtaskId);
-
-        // If no action items, show input for creating one, but don't auto-create it
-        if (subtask.actionItems.length === 0) {
-          setNewItemState({
-            type: 'actionItem',
-            parentTaskId: itemId,
-            parentSubtaskId: subtaskId,
-            name: '',
-            fromExpand: true
-          });
-        }
-      }
-    }
-  };
-
   // New function to handle toggle expanded for action items
   const handleToggleActionItemExpand = (projectId: string, taskId: string, subtaskId: string, actionItemId: string) => {
     if (!selectedProject) return;
@@ -338,7 +285,7 @@ export function TaskTable() {
         onStopTimer={handleStopTimer}
       />
       <div className="bg-background rounded-md shadow overflow-hidden">
-        <table className="w-full border-separate border-spacing-0" style={{ tableLayout: 'fixed' }}>
+        <table className="w-full border-separate border-spacing-0 border border-gray-200 dark:border-gray-700" style={{ tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: '300px' }} />
             <col style={{ width: '100px' }} />
@@ -350,7 +297,7 @@ export function TaskTable() {
             <col style={{ width: '60px' }} />
           </colgroup>
           <TableHead />
-          <tbody>
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {tasks.length === 0 && !newItemState ? (
               <tr>
                 <td colSpan={8} className="px-2 py-1 text-center text-gray-500">
@@ -386,7 +333,6 @@ export function TaskTable() {
                 {tasks.map((task) => (
                   <React.Fragment key={`task-${task.id}`}>
                     <TaskRow
-                      key={task.id}
                       task={task}
                       users={users}
                       selectedProjectId={selectedProject?.id || ''}
@@ -394,13 +340,13 @@ export function TaskTable() {
                       setHoveredRowId={setHoveredRowId}
                       editingItem={editingItem}
                       setEditingItem={setEditingItem}
-                      toggleExpanded={handleToggleExpand}
+                      toggleExpanded={toggleExpanded}
                       updateTask={updateTask}
                       handleSaveEdit={handleSaveEdit}
                       handleAddItem={handleAddItem}
                     />
                     {task.expanded && (
-                      <React.Fragment key={`expanded-task-${task.id}`}>
+                      <>
                         {newItemState &&
                           newItemState.type === 'subtask' &&
                           newItemState.parentTaskId === task.id && (
@@ -408,16 +354,6 @@ export function TaskTable() {
                               <td colSpan={8}>
                                 <NewItemRow
                                   type="subtask"
-                                  name={newItemState.name}
-                                  setName={(name) => setNewItemState({ ...newItemState, name })}
-                                  onSave={handleSaveNewItem}
-                                  onCancel={() => {
-                                    setNewItemState(null);
-                                    if (newItemState.fromExpand) {
-                                      toggleExpanded(selectedProject?.id || '', task.id, 'task');
-                                    }
-                                  }}
-                                  parentTaskId={task.id}
                                   newItemState={newItemState}
                                   selectedProject={selectedProject}
                                   addTask={addTask}
@@ -429,13 +365,22 @@ export function TaskTable() {
                                   updateActionItem={updateActionItem}
                                   setNewItemState={setNewItemState}
                                   toast={toast}
+                                  name={newItemState.name}
+                                  setName={(name) => setNewItemState({ ...newItemState, name })}
+                                  onSave={handleSaveNewItem}
+                                  onCancel={() => {
+                                    setNewItemState(null);
+                                    if (newItemState.fromExpand) {
+                                      toggleExpanded(selectedProject?.id || '', task.id, 'task');
+                                    }
+                                  }}
+                                  parentTaskId={task.id}
                                 />
                               </td>
                             </tr>
                           )}
                         {task.subtasks?.map((subtask) => (
                           <React.Fragment key={`subtask-${subtask.id}`}>
-
                             <SubtaskRow
                               subtask={subtask}
                               taskId={task.id}
@@ -445,35 +390,23 @@ export function TaskTable() {
                               setHoveredRowId={setHoveredRowId}
                               editingItem={editingItem}
                               setEditingItem={setEditingItem}
-                              toggleExpanded={handleToggleExpand}
+                              toggleExpanded={toggleExpanded}
                               updateSubtask={updateSubtask}
                               handleSaveEdit={handleSaveEdit}
                               handleDeleteItem={handleDeleteItem}
                               handleAddItem={handleAddItem}
                               handleStartTimer={handleStartTimer}
                             />
-
                             {subtask.expanded && (
-                              <React.Fragment key={`expanded-subtask-${subtask.id}`}>
+                              <>
                                 {newItemState &&
                                   newItemState.type === 'actionItem' &&
                                   newItemState.parentTaskId === task.id &&
                                   newItemState.parentSubtaskId === subtask.id && (
                                     <tr key={`new-action-item-${subtask.id}`}>
                                       <td colSpan={8}>
-                                        <NewItemRow
+                                        <NewItemRow 
                                           type="actionItem"
-                                          name={newItemState.name}
-                                          setName={(name) => setNewItemState({ ...newItemState, name })}
-                                          onSave={handleSaveNewItem}
-                                          onCancel={() => {
-                                            setNewItemState(null);
-                                            if (newItemState.fromExpand) {
-                                              toggleExpanded(selectedProject?.id || '', task.id, 'subtask', subtask.id);
-                                            }
-                                          }}
-                                          parentTaskId={task.id}
-                                          parentSubtaskId={subtask.id}
                                           newItemState={newItemState}
                                           selectedProject={selectedProject}
                                           addTask={addTask}
@@ -485,13 +418,23 @@ export function TaskTable() {
                                           updateActionItem={updateActionItem}
                                           setNewItemState={setNewItemState}
                                           toast={toast}
+                                          name={newItemState.name}
+                                          setName={(name) => setNewItemState({ ...newItemState, name })}
+                                          onSave={handleSaveNewItem}
+                                          onCancel={() => {
+                                            setNewItemState(null);
+                                            if (newItemState.fromExpand) {
+                                              toggleExpanded(selectedProject?.id || '', task.id, 'subtask', subtask.id);
+                                            }
+                                          }}
+                                          parentTaskId={task.id}
+                                          parentSubtaskId={subtask.id}
                                         />
                                       </td>
                                     </tr>
                                   )}
                                 {subtask.actionItems?.map((actionItem) => (
                                   <React.Fragment key={`action-item-${actionItem.id}`}>
-
                                     <ActionItemRow
                                       actionItem={actionItem}
                                       taskId={task.id}
@@ -507,12 +450,11 @@ export function TaskTable() {
                                       updateActionItem={updateActionItem}
                                       handleSaveEdit={handleSaveEdit}
                                       handleAddItem={handleAddItem}
-                                      startTimer={(projectId, actionItemId) => handleStartTimer(projectId, actionItemId)}
+                                      startTimer={handleStartTimer}
                                       stopTimer={handleStopTimer}
                                     />
-
                                     {actionItem.expanded && (
-                                      <React.Fragment key={`expanded-action-item-${actionItem.id}`}>
+                                      <>
                                         {newItemState &&
                                           newItemState.type === 'subactionItem' &&
                                           newItemState.parentTaskId === task.id &&
@@ -520,20 +462,8 @@ export function TaskTable() {
                                           newItemState.parentActionItemId === actionItem.id && (
                                             <tr key={`new-subaction-item-${actionItem.id}`}>
                                               <td colSpan={8}>
-                                                <NewItemRow
+                                                <NewItemRow 
                                                   type="subactionItem"
-                                                  name={newItemState.name}
-                                                  setName={(name) => setNewItemState({ ...newItemState, name })}
-                                                  onSave={handleSaveNewItem}
-                                                  onCancel={() => {
-                                                    setNewItemState(null);
-                                                    if (newItemState.fromExpand) {
-                                                      toggleExpanded(selectedProject?.id || '', task.id, 'actionItem', actionItem.id);
-                                                    }
-                                                  }}
-                                                  parentTaskId={task.id}
-                                                  parentSubtaskId={subtask.id}
-                                                  parentActionItemId={actionItem.id}
                                                   newItemState={newItemState}
                                                   selectedProject={selectedProject}
                                                   addTask={addTask}
@@ -545,12 +475,31 @@ export function TaskTable() {
                                                   updateActionItem={updateActionItem}
                                                   setNewItemState={setNewItemState}
                                                   toast={toast}
+                                                  name={newItemState.name}
+                                                  setName={(name) => setNewItemState({ ...newItemState, name })}
+                                                  onSave={handleSaveNewItem}
+                                                  onCancel={() => {
+                                                    setNewItemState(null);
+                                                    if (newItemState.fromExpand) {
+                                                      updateActionItem(
+                                                        selectedProject?.id || '',
+                                                        task.id,
+                                                        subtask.id,
+                                                        actionItem.id,
+                                                        { expanded: false }
+                                                      );
+                                                    }
+                                                  }}
+                                                  parentTaskId={task.id}
+                                                  parentSubtaskId={subtask.id}
+                                                  parentActionItemId={actionItem.id}
                                                 />
                                               </td>
                                             </tr>
                                           )}
                                         {actionItem.subactionItems?.map((subactionItem) => (
                                           <SubactionItemRow
+                                            key={`subaction-item-${subactionItem.id}`}
                                             subactionItem={subactionItem}
                                             taskId={task.id}
                                             subtaskId={subtask.id}
@@ -564,19 +513,19 @@ export function TaskTable() {
                                             setEditingItem={setEditingItem}
                                             updateSubactionItem={updateSubactionItem}
                                             handleSaveEdit={handleSaveEdit}
-                                            startTimer={(projectId, actionItemId) => handleStartTimer(projectId, actionItemId)}
+                                            startTimer={handleStartTimer}
                                             stopTimer={handleStopTimer}
                                           />
                                         ))}
-                                      </React.Fragment>
+                                      </>
                                     )}
                                   </React.Fragment>
                                 ))}
-                              </React.Fragment>
+                              </>
                             )}
                           </React.Fragment>
                         ))}
-                      </React.Fragment>
+                      </>
                     )}
                   </React.Fragment>
                 ))}

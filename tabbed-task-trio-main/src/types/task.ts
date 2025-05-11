@@ -1,5 +1,12 @@
 export type Priority = "urgent" | "high" | "normal" | "low" | "none";
-export type Status = "todo" | "inprogress" | "done";
+export type Status =
+  | "todo"
+  | "inprogress"
+  | "complete"
+  | "review"
+  | "closed"
+  | "backlog"
+  | "clarification";
 
 export interface User {
   id: string;
@@ -71,7 +78,6 @@ export interface Task {
   dueDate: Date | null;
   priority: Priority;
   status: Status;
-  comments: string;
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
   expanded: boolean;
@@ -80,6 +86,7 @@ export interface Task {
   level2ID: number;
   level3ID: number;
   level4ID: number;
+  description?: string;
 }
 
 export interface Project {
@@ -95,6 +102,11 @@ export interface Project {
   endDate?: Date;
   createdAt?: Date;
   modifiedAt?: Date;
+  expandedState?: {
+    tasks: Set<string>;
+    subtasks: Set<string>;
+    actionItems: Set<string>;
+  };
 }
 
 export interface TimerInfo {

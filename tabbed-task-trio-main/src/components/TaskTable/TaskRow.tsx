@@ -88,7 +88,10 @@ export function TaskRow({
           <div className="flex-shrink-0 flex items-center">
             <button
               className="toggler mr-2"
-              onClick={() => toggleExpanded(selectedProjectId, task.id, 'task')}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleExpanded(selectedProjectId, task.id, 'task');
+              }}
             >
               {task.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
@@ -224,8 +227,8 @@ export function TaskRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
         <div className="truncate">
           <CommentsCell
-            comments={task.comments}
-            onChange={(comments) => updateTask(selectedProjectId, task.id, { comments })}
+            comments={task.description}
+            onChange={(description) => updateTask(selectedProjectId, task.id, { description })}
           />
         </div>
       </td>

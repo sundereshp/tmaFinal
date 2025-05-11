@@ -12,14 +12,23 @@ interface StatusCellProps {
 const statusOptions = [
   { value: "todo", label: "To Do", icon: "⏳" },
   { value: "inprogress", label: "In Progress", icon: "🔄" },
-  { value: "done", label: "Done", icon: "✅" }
+  { value: "complete", label: "Complete", icon: "✅" },
+  { value: "review", label: "Review", icon: "🔍" },
+  { value: "closed", label: "Closed", icon: "🚫" },
+  { value: "backlog", label: "Backlog", icon: "📋" },
+  { value: "clarification", label: "Clarification", icon: "❓" }
 ];
 
 const statusColors = {
   todo: "text-status-todo",
   inprogress: "text-status-inprogress",
-  done: "text-status-done"
+  complete: "text-status-complete",
+  review: "text-status-review",
+  closed: "text-status-closed",
+  backlog: "text-status-backlog",
+  clarification: "text-status-clarification"
 };
+
 
 export function StatusCell({ status, onChange, disabled = false }: StatusCellProps) {
   const selectedOption = statusOptions.find(option => option.value === status);
