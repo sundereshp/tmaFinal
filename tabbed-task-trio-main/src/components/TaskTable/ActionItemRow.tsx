@@ -189,50 +189,65 @@ export function ActionItemRow({
         </div>
       </td>
 
-      <td>
-        <AssigneeCell
-          users={users}
-          assigneeId={actionItem.assignee}
-          onChange={(assignee) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { assignee })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <AssigneeCell
+            users={users}
+            assigneeId={actionItem.assignee}
+            onChange={(assignee) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { assignee })}
+          />
+        </div>
       </td>
-      <td>
-        <DueDateCell
-          dueDate={actionItem.dueDate}
-          onChange={(dueDate) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { dueDate })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '120px', maxWidth: '120px' }}>
+        <div className="truncate">
+          <DueDateCell
+            dueDate={actionItem.dueDate}
+            onChange={(dueDate) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { dueDate })}
+          />
+        </div>
       </td>
-      <td>
-        <PriorityCell
-          priority={actionItem.priority}
-          onChange={(priority) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { priority })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <PriorityCell
+            priority={actionItem.priority}
+            onChange={(priority) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { priority })}
+          />
+        </div>
       </td>
-      <td>
-        <StatusCell
-          status={actionItem.status}
-          onChange={(status) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { status })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <StatusCell
+            status={actionItem.status}
+            onChange={(status) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { status })}
+          />
+        </div>
       </td>
-      <td>
-        <CommentsCell
-          comments={actionItem.comments}
-          onChange={(comments) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { comments })}
-        />
+      
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '150px', maxWidth: '150px' }}>
+        <div className="truncate">
+          <EstimatedTimeCell
+            estimatedTime={actionItem.estimatedTime}
+            onChange={handleUpdateTime}
+            timeSpent={actionItem.timeSpent}
+          />
+        </div>
       </td>
-      <td>
-        <EstimatedTimeCell
-          estimatedTime={actionItem.estimatedTime}
-          onChange={handleUpdateTime}
-          timeSpent={actionItem.timeSpent}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <CommentsCell
+            comments={actionItem.comments}
+            onChange={(comments) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { comments })}
+          />
+        </div>
       </td>
-      <td>
-        <RowActions
-          onDelete={() => deleteItem(selectedProjectId, actionItem.id)}
-          onStartTimer={handleTimerToggle}
-          isTimerActive={isActiveTimer}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '60px', maxWidth: '60px' }}>
+        <div className="flex justify-center">
+          <RowActions
+            onDelete={() => deleteItem(selectedProjectId, actionItem.id)}
+            onStartTimer={handleTimerToggle}
+            isTimerActive={isActiveTimer}
+          />
+        </div>
       </td>
     </tr>
   );

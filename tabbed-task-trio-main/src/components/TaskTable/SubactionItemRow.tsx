@@ -170,50 +170,65 @@ export function SubactionItemRow({
         </div>
       </td>
 
-      <td>
-        <AssigneeCell
-          users={users}
-          assigneeId={subactionItem.assignee}
-          onChange={(assignee) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { assignee })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <AssigneeCell
+            users={users}
+            assigneeId={subactionItem.assignee}
+            onChange={(assignee) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { assignee })}
+          />
+        </div>
       </td>
-      <td>
-        <DueDateCell
-          dueDate={subactionItem.dueDate}
-          onChange={(dueDate) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { dueDate })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '120px', maxWidth: '120px' }}>
+        <div className="truncate">
+          <DueDateCell
+            dueDate={subactionItem.dueDate}
+            onChange={(dueDate) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { dueDate })}
+          />
+        </div>
       </td>
-      <td>
-        <PriorityCell
-          priority={subactionItem.priority}
-          onChange={(priority) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { priority })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <PriorityCell
+            priority={subactionItem.priority}
+            onChange={(priority) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { priority })}
+          />
+        </div>
       </td>
-      <td>
-        <StatusCell
-          status={subactionItem.status}
-          onChange={(status) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { status })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <StatusCell
+            status={subactionItem.status}
+            onChange={(status) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { status })}
+          />
+        </div>
       </td>
-      <td>
-        <CommentsCell
-          comments={subactionItem.comments}
-          onChange={(comments) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { comments })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '150px', maxWidth: '150px' }}>
+        <div className="truncate">
+          <EstimatedTimeCell
+            estimatedTime={subactionItem.estimatedTime}
+            onChange={handleUpdateTime}
+            timeSpent={subactionItem.timeSpent}
+          />
+        </div>
       </td>
-      <td>
-        <EstimatedTimeCell
-          estimatedTime={subactionItem.estimatedTime}
-          onChange={handleUpdateTime}
-          timeSpent={subactionItem.timeSpent}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <CommentsCell
+            comments={subactionItem.comments}
+            onChange={(comments) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { comments })}
+          />
+        </div>
       </td>
-      <td>
-        <RowActions
-          onDelete={() => deleteItem(selectedProjectId, subactionItem.id)}
-          onStartTimer={handleTimerToggle}
-          isTimerActive={isActiveTimer}
-        />
+      
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '60px', maxWidth: '60px' }}>
+        <div className="flex justify-center">
+          <RowActions
+            onDelete={() => deleteItem(selectedProjectId, subactionItem.id)}
+            onStartTimer={handleTimerToggle}
+            isTimerActive={isActiveTimer}
+          />
+        </div>
       </td>
     </tr>
   );

@@ -72,7 +72,7 @@ export function TaskRow({
 
   return (
     <tr
-      className="task-row border-b border-gray-200 dark:border-gray-700 px-2"
+      className="border-b border-gray-200 dark:border-gray-700"
       onMouseEnter={() => {
         setHoveredRowId(task.id);
         setIsHovered(true);
@@ -82,56 +82,57 @@ export function TaskRow({
         setIsHovered(false);
       }}
     >
-      <td className="name-cell">
-        <div className="flex items-center pl-0 w-full overflow-hidden">
+      <td className="px-2 py-1 overflow-hidden">
+        <div className="flex items-center w-full min-w-0">
           {/* Chevron Toggle */}
-          <button
-            className="toggler flex-shrink-0 mr-2"
-            onClick={() => toggleExpanded(selectedProjectId, task.id, 'task')}
-          >
-            {task.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          </button>
+          <div className="flex-shrink-0 flex items-center">
+            <button
+              className="toggler mr-2"
+              onClick={() => toggleExpanded(selectedProjectId, task.id, 'task')}
+            >
+              {task.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
 
-          {/* Dotted Circle SVG */}
-          <div className="flex-shrink-0 mr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="p-0 bg-transparent border-none hover:scale-105 transition-transform" style={{ width: "16px", height: "16px" }}>
-                  <svg viewBox="-3 -3 106 106" style={{ width: "100%", height: "100%" }}>
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="50"
-                      fill="transparent"
-                      className="stroke-black dark:stroke-white"
-                      strokeWidth={5}
-                      strokeDasharray={`calc((2 * 3.14 * 45) / 8 - 20), 20`}
-                    />
-                  </svg>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-[120px]">
-                {[
-                  { value: "todo", label: "To Do", icon: "⏳" },
-                  { value: "inprogress", label: "In Progress", icon: "🔄" },
-                  { value: "done", label: "Done", icon: "✅" }
-                ].map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => updateTask(selectedProjectId, task.id, { status: option.value as any })}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-lg">{option.icon}</span>
-                    <span>{option.label}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Dotted Circle SVG */}
+            <div className="flex-shrink-0 mr-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-0 bg-transparent border-none hover:scale-105 transition-transform" style={{ width: "16px", height: "16px" }}>
+                    <svg viewBox="-3 -3 106 106" style={{ width: "100%", height: "100%" }}>
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="50"
+                        fill="transparent"
+                        className="stroke-black dark:stroke-white"
+                        strokeWidth={5}
+                        strokeDasharray={`calc((2 * 3.14 * 45) / 8 - 20), 20`}
+                      />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[120px]">
+                  {[
+                    { value: "todo", label: "To Do", icon: "⏳" },
+                    { value: "inprogress", label: "In Progress", icon: "🔄" },
+                    { value: "done", label: "Done", icon: "✅" }
+                  ].map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => updateTask(selectedProjectId, task.id, { status: option.value as any })}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="text-lg">{option.icon}</span>
+                      <span>{option.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Name and buttons */}
-          <div className="flex items-center justify-between w-full gap-2 min-w-0">
-            {/* Truncating name or input */}
+          <div className="flex-1 min-w-0">
             {editingItem && editingItem.id === task.id ? (
               <Input
                 value={editingItem.name}
@@ -142,88 +143,98 @@ export function TaskRow({
                   if (e.key === 'Escape') setEditingItem(null);
                 }}
                 autoFocus
-                className="inline-edit w-full"
+                className="w-full"
               />
             ) : (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className={cn(
-                    "truncate block min-w-0 max-w-full"
-                  )}>
-                    {task.name}
-                  </span>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="truncate">
+                      {task.name}
+                    </span>
+                    {!editingItem && hoveredRowId === task.id && (
+                      <div className="flex-shrink-0 ml-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleEditName}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Pencil size={12} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAddItem('subtask', task.id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Plus size={12} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>{task.name}</TooltipContent>
               </Tooltip>
             )}
-
-            {/* Edit and Add buttons */}
-            {!editingItem && hoveredRowId === task.id && (
-              <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleEditName}
-                  className="h-6 w-6 p-0 flex-shrink-0"
-                >
-                  <Pencil size={12} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleAddItem('subtask', task.id)}
-                  className="h-6 w-6 p-0 flex-shrink-0"
-                >
-                  <Plus size={12} />
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </td>
-      <td>
-        <AssigneeCell
-          users={users}
-          assigneeId={task.assignee}
-          onChange={(assignee) => updateTask(selectedProjectId, task.id, { assignee })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <AssigneeCell
+            users={users}
+            assigneeId={task.assignee}
+            onChange={(assignee) => updateTask(selectedProjectId, task.id, { assignee })}
+          />
+        </div>
       </td>
-      <td>
-        <DueDateCell
-          dueDate={task.dueDate}
-          onChange={(dueDate) => updateTask(selectedProjectId, task.id, { dueDate })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '120px', maxWidth: '120px' }}>
+        <div className="truncate">
+          <DueDateCell
+            dueDate={task.dueDate}
+            onChange={(dueDate) => updateTask(selectedProjectId, task.id, { dueDate })}
+          />
+        </div>
       </td>
-      <td>
-        <PriorityCell
-          priority={task.priority}
-          onChange={(priority) => updateTask(selectedProjectId, task.id, { priority })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <PriorityCell
+            priority={task.priority}
+            onChange={(priority) => updateTask(selectedProjectId, task.id, { priority })}
+          />
+        </div>
       </td>
-      <td>
-        <StatusCell
-          status={task.status}
-          onChange={(status) => updateTask(selectedProjectId, task.id, { status })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <StatusCell
+            status={task.status}
+            onChange={(status) => updateTask(selectedProjectId, task.id, { status })}
+          />
+        </div>
       </td>
-      <td>
-        <CommentsCell
-          comments={task.comments}
-          onChange={(comments) => updateTask(selectedProjectId, task.id, { comments })}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '150px', maxWidth: '150px' }}>
+        <div className="truncate">
+          <EstimatedTimeCell
+            estimatedTime={task.estimatedTime}
+            onChange={handleUpdateTime}
+          />
+        </div>
       </td>
-      <td>
-        <EstimatedTimeCell
-          estimatedTime={task.estimatedTime}
-          onChange={handleUpdateTime}
-          timeSpent={task.timeSpent}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
+        <div className="truncate">
+          <CommentsCell
+            comments={task.comments}
+            onChange={(comments) => updateTask(selectedProjectId, task.id, { comments })}
+          />
+        </div>
       </td>
-      <td>
-        <RowActions
-          onDelete={() => deleteItem(selectedProjectId!, task.id)}
-          showTimer={false}
-        />
+      <td className="px-2 py-1 overflow-hidden" style={{ width: '60px', maxWidth: '60px' }}>
+        <div className="flex justify-center">
+          <RowActions
+            onDelete={() => deleteItem(selectedProjectId!, task.id)}
+          />
+        </div>
       </td>
     </tr>
   );

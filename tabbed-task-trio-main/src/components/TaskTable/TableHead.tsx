@@ -1,16 +1,17 @@
+import React from 'react';
 
 export function TableHead() {
   return (
-    <thead className="sticky top-0 bg-muted z-10">
+    <thead className="bg-muted">
       <tr>
-        <th style={{ width: '300px' }}>Name</th>
-        <th style={{ width: '100px' }}>Assignee</th>
-        <th style={{ width: '120px' }}>Due Date</th>
-        <th style={{ width: '100px' }}>Priority</th>
-        <th style={{ width: '100px' }}>Status</th>
-        <th style={{ width: '100px' }}>Comments</th>
-        <th style={{ width: '150px' }}>Est. Time</th>
-        <th style={{ width: '60px' }}>Actions</th>
+        <th className="px-2 py-1 text-left">Task Name</th>
+        <th className="px-2 py-1 text-left">Assignee</th>
+        <th className="px-2 py-1 text-left">Due Date</th>
+        <th className="px-2 py-1 text-left">Priority</th>
+        <th className="px-2 py-1 text-left">Status</th>
+        <th className="px-2 py-1 text-left">Est. Time</th>
+        <th className="px-2 py-1 text-left">Comments</th>
+        <th className="px-2 py-1 text-left">Actions</th>
       </tr>
     </thead>
   );
