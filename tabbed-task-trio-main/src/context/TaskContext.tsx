@@ -32,7 +32,7 @@ interface TaskContextType {
   updateActionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
   addSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string) => void;
   updateSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, subactionItemId: string, updates: Partial<SubactionItem>) => void;
-  toggleExpanded: (projectId: string, taskId: string, type: "task" | "subtask" | "actionItem", subtaskId?: string, actionItemId?: string) => void;
+  toggleExpanded: (projectId: string, taskId: string, type: "task" | "subtask" | "actionItem" | "subactionItem", subtaskId?: string, actionItemId?: string, subactionItemId?: string) => void;
   startTimer: (projectId: string, actionItemId: string) => void;
   deleteItem: (projectId: string, itemId: string) => void;
   stopTimer: () => void;
@@ -640,65 +640,62 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   };
 
 
-  const toggleExpanded = (projectId: string, taskId: string, type: "task" | "subtask" | "actionItem", subtaskId?: string, actionItemId?: string) => {
+  const toggleExpanded = (
+    projectId: string, 
+    taskId: string, 
+    type: "task" | "subtask" | "actionItem" | "subactionItem",
+    subtaskId?: string,
+    actionItemId?: string,
+    subactionItemId?: string
+  ) => {
     setProjects(projects.map(project => {
       if (project.id === projectId) {
         return {
           ...project,
           tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              if (type === "task") {
-                // If task has no subtasks, we don't toggle but keep it expanded
-                // This allows the UI to handle showing the input field
-                if (task.subtasks.length === 0) {
-                  return {
-                    ...task,
-                    expanded: true
-                  };
-                }
-                // Otherwise, toggle as normal
-                return {
-                  ...task,
-                  expanded: !task.expanded
-                };
-              } else if (type === "subtask" && subtaskId) {
-                return {
-                  ...task,
-                  subtasks: task.subtasks.map(subtask => {
-                    if (subtask.id === subtaskId) {
-                      // If subtask has no action items, keep it expanded
-                      if (subtask.actionItems.length === 0) {
-                        return { ...subtask, expanded: true };
-                      }
-                      // Otherwise toggle as normal
-                      return { ...subtask, expanded: !subtask.expanded };
-                    }
-                    return subtask;
-                  })
-                };
-              } else if (type === "actionItem" && subtaskId && actionItemId) {
-                return {
-                  ...task,
-                  subtasks: task.subtasks.map(subtask => {
-                    if (subtask.id === subtaskId) {
-                      return {
-                        ...subtask,
-                        actionItems: subtask.actionItems.map(actionItem => {
-                          if (actionItem.id === actionItemId) {
-                            return {
-                              ...actionItem,
-                              expanded: !actionItem.expanded
-                            };
-                          }
-                          return actionItem;
-                        })
-                      };
-                    }
-                    return subtask;
-                  })
-                };
-              }
+            // For tasks
+            if (type === "task" && task.id === taskId) {
+              return { ...task, expanded: !task.expanded };
             }
+            
+            // For subtasks
+            if (type === "subtask" && subtaskId) {
+              return {
+                ...task,
+                subtasks: task.subtasks.map(subtask => 
+                  subtask.id === subtaskId 
+                    ? { ...subtask, expanded: !subtask.expanded } 
+                    : subtask
+                )
+              };
+            }
+            
+            // For action items
+            if (type === "actionItem" && subtaskId && actionItemId) {
+              return {
+                ...task,
+                subtasks: task.subtasks.map(subtask => 
+                  subtask.id === subtaskId 
+                    ? {
+                        ...subtask,
+                        actionItems: subtask.actionItems.map(actionItem => 
+                          actionItem.id === actionItemId 
+                            ? { ...actionItem, expanded: !actionItem.expanded }
+                            : actionItem
+                        )
+                      } 
+                    : subtask
+                )
+              };
+            }
+
+            // For subaction items
+            if (type === "subactionItem") {
+              // Subaction items don't have children to expand/collapse
+              // So we don't need to do anything here
+              return task;
+            }
+            
             return task;
           })
         };

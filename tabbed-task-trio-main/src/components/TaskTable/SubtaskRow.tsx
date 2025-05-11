@@ -95,8 +95,45 @@ export function SubtaskRow({
               {subtask.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
             {/* Status Dropdown as in TaskRow */}
+            {/* Dotted Circle SVG */}
             <div className="flex-shrink-0 mr-2">
-              {/* ...DropdownMenu code... */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-0 bg-transparent border-none hover:scale-105 transition-transform" style={{ width: "16px", height: "16px" }}>
+                    <svg viewBox="-3 -3 106 106" style={{ width: "100%", height: "100%" }}>
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="50"
+                        fill="transparent"
+                        className="stroke-black dark:stroke-white"
+                        strokeWidth={5}
+                        strokeDasharray={`calc((2 * 3.14 * 45) / 8 - 20), 20`}
+                      />
+                    </svg>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[120px]">
+                  {[
+                    { value: "todo", label: "To Do", icon: "⏳" },
+                    { value: "inprogress", label: "In Progress", icon: "🔄" },
+                    { value: "complete", label: "Complete", icon: "✅" },
+                    { value: "review", label: "Review", icon: "🔍" },
+                    { value: "closed", label: "Closed", icon: "🚫" },
+                    { value: "backlog", label: "Backlog", icon: "📋" },
+                    { value: "clarification", label: "Clarification", icon: "❓" }
+                  ].map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => updateSubtask(selectedProjectId, taskId, subtask.id, { status: option.value as any })}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="text-lg">{option.icon}</span>
+                      <span>{option.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <div className="flex-1 min-w-0">

@@ -1,0 +1,32 @@
+/* Task row transitions */
+.task-row {
+  transition: background-color 0.2s ease;
+}
+
+/* Toggle button animation */
+.toggle-btn {
+  transition: transform 0.2s ease;
+}
+
+.toggle-btn:hover {
+  transform: scale(1.1);
+}
+
+/* Smooth expansion/collapse */
+.task-children {
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+}
+
+/* Subtask indentation */
+.subtask-row {
+  margin-left: 1.5rem;
+}
+
+.action-item-row {
+  margin-left: 3rem;
+}
+
+.subaction-item-row {
+  margin-left: 4.5rem;
+}

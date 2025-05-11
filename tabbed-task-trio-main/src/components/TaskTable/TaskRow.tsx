@@ -118,7 +118,11 @@ export function TaskRow({
                   {[
                     { value: "todo", label: "To Do", icon: "⏳" },
                     { value: "inprogress", label: "In Progress", icon: "🔄" },
-                    { value: "done", label: "Done", icon: "✅" }
+                    { value: "complete", label: "Complete", icon: "✅" },
+                    { value: "review", label: "Review", icon: "🔍" },
+                    { value: "closed", label: "Closed", icon: "🚫" },
+                    { value: "backlog", label: "Backlog", icon: "📋" },
+                    { value: "clarification", label: "Clarification", icon: "❓" }
                   ].map((option) => (
                     <DropdownMenuItem
                       key={option.value}

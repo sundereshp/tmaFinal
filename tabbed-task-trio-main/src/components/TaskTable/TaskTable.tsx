@@ -119,6 +119,31 @@ export function TaskTable() {
     parentSubtaskId?: string,
     parentActionItemId?: string
   ) => {
+    if (!selectedProject) return;
+
+    // Auto-expand all relevant parents when adding a new item
+    if (type === 'subtask' && parentTaskId) {
+      // When adding a subtask, expand the parent task
+      updateTask(selectedProject.id, parentTaskId, { expanded: true });
+    } 
+    else if (type === 'actionItem' && parentTaskId && parentSubtaskId) {
+      // When adding an action item, expand both parent task and subtask
+      updateTask(selectedProject.id, parentTaskId, { expanded: true });
+      updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
+    } 
+    else if (type === 'subactionItem' && parentTaskId && parentSubtaskId && parentActionItemId) {
+      // When adding a subaction item, expand all parents
+      updateTask(selectedProject.id, parentTaskId, { expanded: true });
+      updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
+      updateActionItem(
+        selectedProject.id,
+        parentTaskId,
+        parentSubtaskId,
+        parentActionItemId,
+        { expanded: true }
+      );
+    }
+
     setNewItemState({
       type,
       parentTaskId,
@@ -128,60 +153,44 @@ export function TaskTable() {
     });
   };
 
-  const handleSaveNewItem = () => {
+  const handleSaveNewItem = async () => {
     if (!newItemState || !selectedProject || !newItemState.name.trim()) return;
 
-    const { type, parentTaskId, parentSubtaskId, parentActionItemId, name, fromExpand } = newItemState;
+    const { type, parentTaskId, parentSubtaskId, parentActionItemId, name } = newItemState;
 
-    if (type === 'task') {
-      addTask(selectedProject.id, name);
-      if (!fromExpand) {
-        const task = selectedProject.tasks.find(t => t.id === parentTaskId);
-        if (task && !task.expanded) {
-          updateTask(selectedProject.id, parentTaskId, { expanded: true });
-        }
+    try {
+      if (type === 'task') {
+        await addTask(selectedProject.id, name);
+      } else if (type === 'subtask' && parentTaskId) {
+        await addSubtask(selectedProject.id, parentTaskId, name);
+        // Ensure parent task stays expanded
+        updateTask(selectedProject.id, parentTaskId, { expanded: true });
+      } else if (type === 'actionItem' && parentTaskId && parentSubtaskId) {
+        await addActionItem(selectedProject.id, parentTaskId, parentSubtaskId, name);
+        // Ensure parent subtask stays expanded
+        updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
+        // Also ensure parent task is expanded
+        updateTask(selectedProject.id, parentTaskId, { expanded: true });
+      } else if (type === 'subactionItem' && parentTaskId && parentSubtaskId && parentActionItemId) {
+        await addSubactionItem(selectedProject.id, parentTaskId, parentSubtaskId, parentActionItemId, name);
+        // Ensure parent action item stays expanded
+        updateActionItem(
+          selectedProject.id,
+          parentTaskId,
+          parentSubtaskId,
+          parentActionItemId,
+          { expanded: true }
+        );
+        // Also ensure parent subtask and task are expanded
+        updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
+        updateTask(selectedProject.id, parentTaskId, { expanded: true });
       }
-    } else if (type === 'subtask' && parentTaskId) {
-      addSubtask(selectedProject.id, parentTaskId, name);
-      // Ensure the parent task stays expanded after adding subtask
-      if (!fromExpand) {
-        const task = selectedProject.tasks.find(t => t.id === parentTaskId);
-        if (task && !task.expanded) {
-          updateTask(selectedProject.id, parentTaskId, { expanded: true });
-        }
-      }
-    } else if (type === 'actionItem' && parentTaskId && parentSubtaskId) {
-      addActionItem(selectedProject.id, parentTaskId, parentSubtaskId, name);
-      // Ensure the parent subtask stays expanded after adding action item
-      if (!fromExpand) {
-        const task = selectedProject.tasks.find(t => t.id === parentTaskId);
-        if (task) {
-          const subtask = task.subtasks.find(s => s.id === parentSubtaskId);
-          if (subtask && !subtask.expanded) {
-            updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
-          }
-        }
-      }
-    } else if (type === 'subactionItem' && parentTaskId && parentSubtaskId && parentActionItemId) {
-      addSubactionItem(selectedProject.id, parentTaskId, parentSubtaskId, parentActionItemId, name);
-      // Ensure the parent action item stays expanded after adding subaction item
-      if (!fromExpand) {
-        const task = selectedProject.tasks.find(t => t.id === parentTaskId);
-        if (task) {
-          const subtask = task.subtasks.find(s => s.id === parentSubtaskId);
-          if (subtask) {
-            const actionItem = subtask.actionItems.find(a => a.id === parentActionItemId);
-            if (actionItem && !actionItem.expanded) {
-              updateActionItem(selectedProject.id, parentTaskId, parentSubtaskId, parentActionItemId, { expanded: true });
-            }
-          }
-        }
-      }
+    } catch (error) {
+      console.error('Error saving item:', error);
+      return;
     }
 
     setNewItemState(null);
-
-    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully`);
   };
 
   const handleDeleteItem = (id: string, type: 'task' | 'subtask' | 'actionItem' | 'subactionItem') => {
