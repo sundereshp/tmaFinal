@@ -150,7 +150,7 @@ app.post('/api/tasks', (req, res) => {
 
     const {
         wsID, userID, projectID, name, description = '',
-        taskLevel = 1, status = 'TODO', parentID = 0,
+        taskLevel = 1, status = 'todo', parentID = 0,
         assignee1ID = 0, assignee2ID = 0, assignee3ID = 0,
         estHours = 0, estPrevHours = [], actHours = 0,
         isExceeded = 0, info = {}

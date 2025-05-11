@@ -290,7 +290,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       userID: 1,
       projectID: parseInt(projectId),
       taskLevel: 1,  // Level 1 task
-      status: 'TODO',
+      status: 'todo',  // Ensure status is set to 'todo'
       parentID: 0,  // Parent ID should be 0 for root tasks
       // Level IDs will be set by backend
       level1ID: 0,
