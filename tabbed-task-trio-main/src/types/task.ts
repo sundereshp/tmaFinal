@@ -33,6 +33,10 @@ export interface SubactionItem {
   level2ID: number;
   level3ID: number;
   level4ID: number;
+  assignee1ID?: number;
+  assignee2ID?: number;
+  assignee3ID?: number;
+  taskType: TaskType;
 }
 
 export interface ActionItem {
@@ -42,6 +46,7 @@ export interface ActionItem {
   dueDate: Date | null;
   priority: Priority;
   status: Status;
+  taskType: TaskType;
   comments: string;
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
@@ -51,6 +56,9 @@ export interface ActionItem {
   level2ID: number;
   level3ID: number;
   level4ID: number;
+  assignee1ID?: number;
+  assignee2ID?: number;
+  assignee3ID?: number;
 }
 
 export interface Subtask {
@@ -60,6 +68,7 @@ export interface Subtask {
   dueDate: Date | null;
   priority: Priority;
   status: Status;
+  taskType: TaskType;
   comments: string;
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
@@ -69,7 +78,12 @@ export interface Subtask {
   level2ID: number;
   level3ID: number;
   level4ID: number;
+  assignee1ID?: number;
+  assignee2ID?: number;
+  assignee3ID?: number;
 }
+
+export type TaskType = 'task' | 'milestone' | 'forms';
 
 export interface Task {
   id: string;
@@ -78,6 +92,7 @@ export interface Task {
   dueDate: Date | null;
   priority: Priority;
   status: Status;
+  taskType: TaskType;
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
   expanded: boolean;
@@ -87,6 +102,19 @@ export interface Task {
   level3ID: number;
   level4ID: number;
   description?: string;
+  assignee1ID?: number;
+  assignee2ID?: number;
+  assignee3ID?: number;
+  wsID?: number;
+  userID?: number;
+  projectID?: number;
+  taskLevel?: number;
+  parentID?: number;
+  estHours?: number;
+  estPrevHours?: number[];
+  actHours?: number;
+  isExceeded?: number;
+  info?: Record<string, any>;
 }
 
 export interface Project {

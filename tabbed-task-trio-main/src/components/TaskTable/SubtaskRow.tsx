@@ -1,16 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Subtask, User } from "@/types/task";
+import { Subtask, User, TaskType, Status } from "@/types/task";
 import { ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
 import { AssigneeCell } from "./AssigneeCell";
 import { CommentsCell } from "./CommentsCell";
 import { DueDateCell } from "./DueDateCell";
+import { EstimatedTimeCell } from "./EstimatedTimeCell";
 import { PriorityCell } from "./PriorityCell";
 import { RowActions } from "./RowActions";
 import { StatusCell } from "./StatusCell";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { EstimatedTimeCell } from "./EstimatedTimeCell";
+import { TaskTypeDropdown } from "./TaskTypeDropdown";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTaskContext } from "@/context/TaskContext";
@@ -38,6 +38,7 @@ interface SubtaskRowProps {
   handleDeleteItem: (id: string, type: 'task' | 'subtask' | 'actionItem' | 'subactionItem') => void;
   handleAddItem: (type: 'task' | 'subtask' | 'actionItem' | 'subactionItem', parentTaskId?: string, parentSubtaskId?: string) => void;
   handleStartTimer: (taskId: string, subtaskId: string) => void;
+  parentTaskType?: TaskType;
 }
 
 export function SubtaskRow({
@@ -53,9 +54,11 @@ export function SubtaskRow({
   updateSubtask,
   handleSaveEdit,
   handleAddItem,
-  handleStartTimer
+  handleStartTimer,
+  parentTaskType = 'task'
 }: SubtaskRowProps) {
   const { deleteItem } = useTaskContext();
+  const isFormsType = parentTaskType === 'forms';
   
   const handleEditName = () => {
     setEditingItem({
@@ -67,6 +70,14 @@ export function SubtaskRow({
 
   const handleUpdateTime = (estimatedTime: { hours: number; minutes: number } | null) => {
     updateSubtask(selectedProjectId, taskId, subtask.id, { estimatedTime });
+  };
+
+  const handleTaskTypeChange = (type: TaskType) => {
+    updateSubtask(selectedProjectId, taskId, subtask.id, { taskType: type });
+  };
+
+  const handleStatusChange = (status: Status) => {
+    updateSubtask(selectedProjectId, taskId, subtask.id, { status });
   };
 
   return (
@@ -88,46 +99,14 @@ export function SubtaskRow({
             >
               {subtask.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
-            {/* Status Dropdown as in TaskRow */}
-            {/* Dotted Circle SVG */}
-            <div className="flex-shrink-0 mr-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="p-0 bg-transparent border-none hover:scale-105 transition-transform" style={{ width: "16px", height: "16px" }}>
-                    <svg viewBox="-3 -3 106 106" style={{ width: "100%", height: "100%" }}>
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="50"
-                        fill="transparent"
-                        className="stroke-black dark:stroke-white"
-                        strokeWidth={5}
-                        strokeDasharray={`calc((2 * 3.14 * 45) / 8 - 20), 20`}
-                      />
-                    </svg>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[120px]">
-                  {[
-                    { value: "todo", label: "To Do", icon: "⏳" },
-                    { value: "inprogress", label: "In Progress", icon: "🔄" },
-                    { value: "complete", label: "Complete", icon: "✅" },
-                    { value: "review", label: "Review", icon: "🔍" },
-                    { value: "closed", label: "Closed", icon: "🚫" },
-                    { value: "backlog", label: "Backlog", icon: "📋" },
-                    { value: "clarification", label: "Clarification", icon: "❓" }
-                  ].map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onClick={() => updateSubtask(selectedProjectId, taskId, subtask.id, { status: option.value as any })}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="text-lg">{option.icon}</span>
-                      <span>{option.label}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Status Dropdown */}
+            <div className="mr-2">
+              <TaskTypeDropdown 
+                taskType={subtask.taskType || 'task'} 
+                status={subtask.status || 'todo'} 
+                onTypeChange={handleTaskTypeChange} 
+                onStatusChange={handleStatusChange} 
+              />
             </div>
           </div>
           <div className="flex-1 min-w-0">
@@ -162,7 +141,9 @@ export function SubtaskRow({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleAddItem('actionItem', taskId, subtask.id)}
-                          className="h-6 w-6 p-0"
+                          className={cn("h-6 w-6 p-0", isFormsType && "opacity-50 cursor-not-allowed")}
+                          disabled={isFormsType}
+                          title={isFormsType ? "Cannot add action items to forms type tasks" : "Add action item"}
                         >
                           <Plus size={12} />
                         </Button>

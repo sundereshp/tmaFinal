@@ -1,4 +1,4 @@
-import { SubactionItem, User } from "@/types/task";
+import { SubactionItem, User, TaskType, Status } from "@/types/task";
 import { AssigneeCell } from "./AssigneeCell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { PriorityCell } from "./PriorityCell";
 import { RowActions } from "./RowActions";
 import { StatusCell } from "./StatusCell";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { TaskTypeDropdown } from "./TaskTypeDropdown";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { useTaskContext } from "../../context/TaskContext";
@@ -39,6 +39,7 @@ interface SubactionItemRowProps {
   handleSaveEdit: () => void;
   startTimer: (projectId: string, actionItemId: string) => void;
   stopTimer: () => void;
+  parentTaskType?: TaskType;
 }
 
 export function SubactionItemRow({
@@ -56,10 +57,13 @@ export function SubactionItemRow({
   updateSubactionItem,
   handleSaveEdit,
   startTimer,
-  stopTimer
+  stopTimer,
+  parentTaskType = 'task'
 }: SubactionItemRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const { deleteItem } = useTaskContext();
+  const isFormsType = parentTaskType === 'forms';
+  
   const handleUpdateTime = (estimatedTime: { days?: number; hours: number; minutes: number } | null) => {
     updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { estimatedTime });
   };
@@ -80,6 +84,14 @@ export function SubactionItemRow({
     });
   };
 
+  const handleTaskTypeChange = (type: TaskType) => {
+    updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { taskType: type });
+  };
+
+  const handleStatusChange = (status: Status) => {
+    updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { status });
+  };
+
   return (
     <tr
       className={cn("task-row group", isActiveTimer ? "bg-primary/5" : "")}
@@ -90,85 +102,54 @@ export function SubactionItemRow({
         <div className="flex items-center pl-16 w-full overflow-hidden">
 
           <div className="flex-shrink-0 mr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="p-0 bg-transparent border-none hover:scale-105 transition-transform" style={{ width: "16px", height: "16px" }}>
-                  <svg viewBox="-3 -3 106 106" style={{ width: "100%", height: "100%" }}>
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="50"
-                      fill="transparent"
-                      className="stroke-black dark:stroke-white"
-                      strokeWidth={5}
-                      strokeDasharray={`calc((2 * 3.14 * 50) / 7 - 20), 20`}
-                    />
-                  </svg>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-[120px]">
-                {[
-                  { value: "todo", label: "To Do", icon: "⏳" },
-                  { value: "inprogress", label: "In Progress", icon: "🔄" },
-                  { value: "complete", label: "Complete", icon: "✅" },
-                  { value: "review", label: "Review", icon: "🔍" },
-                  { value: "closed", label: "Closed", icon: "🚫" },
-                  { value: "backlog", label: "Backlog", icon: "📋" },
-                  { value: "clarification", label: "Clarification", icon: "❓" }
-                ].map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { status: option.value as any })}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-lg">{option.icon}</span>
-                    <span>{option.label}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TaskTypeDropdown 
+              taskType={subactionItem.taskType || 'task'} 
+              status={subactionItem.status || 'todo'} 
+              onTypeChange={handleTaskTypeChange} 
+              onStatusChange={handleStatusChange} 
+            />
           </div>
 
           {/* Name and buttons */}
           <div className="flex items-center justify-between w-full gap-2 min-w-0">
             {/* Truncating name or input */}
-            {editingItem && editingItem.id === subactionItem.id ? (
-              <Input
-                value={editingItem.name}
-                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                onBlur={handleSaveEdit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveEdit();
-                  if (e.key === 'Escape') setEditingItem(null);
-                }}
-                autoFocus
-                className="inline-edit w-full"
-              />
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className={cn(
-                    "truncate block min-w-0 max-w-full",
-                    isActiveTimer && "font-medium text-primary"
-                  )}>
-                    {subactionItem.name}
-                    {isActiveTimer && " (Timer Active)"}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{subactionItem.name}</TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* Edit and Add buttons */}
-            <div className="flex items-center gap-1 flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEditName}
-                className="h-6 w-6 p-0 flex-shrink-0"
-              >
-                <Pencil size={12} />
-              </Button>
+            <div className="flex-1 min-w-0">
+              {editingItem && editingItem.id === subactionItem.id ? (
+                <Input
+                  value={editingItem.name}
+                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                  onBlur={handleSaveEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEdit();
+                    if (e.key === 'Escape') setEditingItem(null);
+                  }}
+                  autoFocus
+                  className="w-full"
+                />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-between w-full">
+                      <span className="truncate">
+                        {subactionItem.name}
+                      </span>
+                      {!editingItem && hoveredRowId === subactionItem.id && (
+                        <div className="flex-shrink-0 ml-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleEditName}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Pencil size={12} />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{subactionItem.name}</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
         </div>

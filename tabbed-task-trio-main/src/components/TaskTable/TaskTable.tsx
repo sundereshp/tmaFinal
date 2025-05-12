@@ -342,7 +342,7 @@ export function TaskTable() {
                 <Button 
                   variant="outline"
                   size="sm"
-                  onClick={() => handleAddItem('task', undefined, undefined, undefined, 'todo')} // Explicitly set status
+                  onClick={() => handleAddItem('task', undefined, undefined, undefined, status)}
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add Task
                 </Button>
@@ -468,6 +468,7 @@ export function TaskTable() {
                                     handleDeleteItem={handleDeleteItem}
                                     handleAddItem={handleAddItem}
                                     handleStartTimer={handleStartTimer}
+                                    parentTaskType={task.taskType || 'task'}
                                   />
                                   {subtask.expanded && (
                                     <>
@@ -524,6 +525,7 @@ export function TaskTable() {
                                             handleAddItem={handleAddItem}
                                             startTimer={handleStartTimer}
                                             stopTimer={handleStopTimer}
+                                            parentTaskType={task.taskType || 'task'}
                                           />
                                           {actionItem.expanded && (
                                             <>
@@ -571,14 +573,14 @@ export function TaskTable() {
                                                 )}
                                               {actionItem.subactionItems?.map((subactionItem) => (
                                                 <SubactionItemRow
-                                                  key={`subaction-item-${subactionItem.id}`}
+                                                  key={subactionItem.id}
                                                   subactionItem={subactionItem}
                                                   taskId={task.id}
                                                   subtaskId={subtask.id}
                                                   actionItemId={actionItem.id}
-                                                  isActiveTimer={timer?.subactionItemId === subactionItem.id}
+                                                  isActiveTimer={timer.isActive && timer.actionItemId === actionItem.id && timer.subactionItemId === subactionItem.id}
                                                   users={users}
-                                                  selectedProjectId={selectedProject?.id || ''}
+                                                  selectedProjectId={selectedProject.id}
                                                   hoveredRowId={hoveredRowId}
                                                   setHoveredRowId={setHoveredRowId}
                                                   editingItem={editingItem}
@@ -587,6 +589,7 @@ export function TaskTable() {
                                                   handleSaveEdit={handleSaveEdit}
                                                   startTimer={handleStartTimer}
                                                   stopTimer={handleStopTimer}
+                                                  parentTaskType={task.taskType || 'task'}
                                                 />
                                               ))}
                                             </>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { ActionItem, Priority, Project, Status, Subtask, Task, TimerInfo, User, SubactionItem } from "../types/task";
+import { ActionItem, Priority, Project, Status, Subtask, Task, TimerInfo, User, SubactionItem, TaskType } from "../types/task";
 import { addDays } from "date-fns";
 import toast from 'react-hot-toast'; // Import toast
 
@@ -24,7 +24,7 @@ interface TaskContextType {
   renameProject: (projectId: string, name: string) => void;
   duplicateProject: (projectId: string) => void;
   selectProject: (projectId: string | null) => void;
-  addTask: (projectId: string, name: string, status?: Status) => void;
+  addTask: (projectId: string, name: string, status?: Status, taskType?: TaskType) => void;
   updateTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
   addSubtask: (projectId: string, taskId: string, name: string, status?: Status) => void;
   updateSubtask: (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => void;
@@ -283,7 +283,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     setSelectedProjectId(projectId);
   };
 
-  const addTask = async (projectId: string, name: string, status: Status = 'todo') => {
+  const addTask = async (projectId: string, name: string, status: Status = 'todo', taskType: TaskType = 'task') => {
     if (!name.trim()) return;
 
     const newTaskPayload = {
@@ -292,7 +292,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       userID: 1,
       projectID: parseInt(projectId),
       taskLevel: 1,  
-      status,  
+      status,
+      taskType, 
       parentID: 0,  
       level1ID: 0,
       level2ID: 0,
@@ -322,10 +323,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       }
 
       const createdTask = await response.json();
-
-      // Instead of manually updating state, refresh tasks from backend
       await fetchTasks(projectId);
-
       toast.success('Task created successfully');
       return createdTask;
     } catch (err) {
