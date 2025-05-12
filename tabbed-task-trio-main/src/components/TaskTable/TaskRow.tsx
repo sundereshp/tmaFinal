@@ -56,8 +56,8 @@ export function TaskRow({
   startTimer,
   stopTimer
 }: TaskRowProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const { deleteItem } = useTaskContext();
+  
   const handleEditName = () => {
     setEditingItem({
       id: task.id,
@@ -72,15 +72,9 @@ export function TaskRow({
 
   return (
     <tr
-      className="border-b border-gray-200 dark:border-gray-700"
-      onMouseEnter={() => {
-        setHoveredRowId(task.id);
-        setIsHovered(true);
-      }}
-      onMouseLeave={() => {
-        setHoveredRowId(null);
-        setIsHovered(false);
-      }}
+      className={cn("task-row group border-b border-gray-200 dark:border-gray-700")}
+      onMouseEnter={() => setHoveredRowId(task.id)}
+      onMouseLeave={() => setHoveredRowId(null)}
     >
       <td className="px-2 py-1 overflow-hidden">
         <div className="flex items-center w-full min-w-0">

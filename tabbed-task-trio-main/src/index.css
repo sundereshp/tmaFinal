@@ -156,7 +156,12 @@ header {
   vertical-align: middle;
 }
 
-.task-row:hover {
+.task-row {
+  transition: background-color 0.2s ease;
+}
+
+.task-row:hover,
+.task-row:hover td {
   background-color: hsl(var(--accent));
 }
 
