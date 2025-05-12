@@ -241,42 +241,108 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const duplicateProject = (projectId: string) => {
-    const sourceProject = projects.find(p => p.id === projectId);
-    if (!sourceProject) return;
+  const duplicateProject = async (projectId: string) => {
+    try {
+      const sourceProject = projects.find(p => p.id === projectId);
+      if (!sourceProject) return;
 
-    // Generate incremented name by checking existing copies
-    const baseName = sourceProject.name.replace(/\(\d+\)$/, '').trim();
-    const regex = new RegExp(`^${baseName}(?:\s*\((\d+)\))?$`);
-
-    // Find the highest number suffix
-    let highestNumber = 0;
-    projects.forEach(project => {
-      const match = project.name.match(regex);
-      if (match && match[1]) {
-        const num = parseInt(match[1], 10);
-        if (num > highestNumber) {
-          highestNumber = num;
+      // Extract base name by removing any existing number in parentheses
+      const baseName = sourceProject.name.replace(/\s*\(\d+\)$/, '').trim();
+      
+      // Find all existing project names that match the base name pattern
+      const existingNumbers: number[] = [];
+      const projectNamePattern = new RegExp(`^${escapeRegExp(baseName)}(?:\s*\((\d+)\))?$`);
+      
+      projects.forEach(project => {
+        const match = project.name.match(projectNamePattern);
+        if (match) {
+          if (match[1]) {
+            // If there's a number in parentheses, add it to our list
+            existingNumbers.push(parseInt(match[1], 10));
+          } else {
+            // If it's exactly the base name (no number), count it as (1)
+            existingNumbers.push(1);
+          }
         }
-      } else if (match && project.name === baseName) {
-        // If there's an exact match (no number), count it as (1)
-        highestNumber = Math.max(highestNumber, 1);
+      });
+
+      // Find the lowest unused positive integer
+      let nextNumber = 1;
+      while (existingNumbers.includes(nextNumber)) {
+        nextNumber++;
       }
-    });
+      
+      // Create the new project name with the next available number
+      const newProjectName = `${baseName} (${nextNumber})`;
+      
+      // Create the new project via API
+      const projectResponse = await fetch('http://localhost:5000/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userID: 1,
+          name: newProjectName,
+          startDate: sourceProject.startDate || new Date().toISOString(),
+          endDate: sourceProject.endDate || addDays(new Date(), 30).toISOString(),
+          wsID: 1
+        })
+      });
 
-    // Create a deep copy of the project
-    const deepCopy = JSON.parse(JSON.stringify(sourceProject));
+      if (!projectResponse.ok) throw new Error('Failed to create project copy');
+      
+      const newProject = await projectResponse.json();
 
-    // Create the new project with incremented name and new ID
-    const newProject: Project = {
-      ...deepCopy,
-      id: `p${Date.now()}`,
-      name: highestNumber > 0
-        ? `${baseName} (${highestNumber + 1})`
-        : `${baseName} (1)`
-    };
-
-    setProjects([...projects, newProject]);
+      // Fetch the source project's tasks
+      const tasksResponse = await fetch(`http://localhost:5000/api/tasks/project/${projectId}`);
+      if (!tasksResponse.ok) throw new Error('Failed to fetch tasks for duplication');
+      
+      const tasks = await tasksResponse.json();
+      
+      // Create a map to track old IDs to new IDs
+      const idMap = new Map<string, string>();
+      
+      // First, create all tasks with updated project ID
+      for (const task of tasks) {
+        const { id: oldId, ...taskData } = task;
+        const newTask = {
+          ...taskData,
+          projectID: parseInt(newProject.id),
+          // Clear timers and other runtime-specific data
+          timerStart: null,
+          timeSpent: 0,
+          status: task.status === 'completed' ? 'todo' : task.status, // Reset completed tasks to todo
+          // Clear completion data
+          completedAt: null,
+          completedBy: null
+        };
+        
+        const response = await fetch('http://localhost:5000/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newTask)
+        });
+        
+        if (!response.ok) throw new Error('Failed to duplicate task');
+        
+        const createdTask = await response.json();
+        idMap.set(oldId, createdTask.id);
+      }
+      
+      // Refresh the projects list to include the new project
+      const updatedProjectsResponse = await fetch('http://localhost:5000/api/projects');
+      if (!updatedProjectsResponse.ok) throw new Error('Failed to fetch updated projects');
+      
+      const updatedProjects = await updatedProjectsResponse.json();
+      setProjects(updatedProjects);
+      
+      // Select the new project
+      setSelectedProjectId(newProject.id);
+      
+      toast.success('Project duplicated successfully');
+    } catch (err) {
+      console.error('Error duplicating project:', err);
+      toast.error('Failed to duplicate project');
+    }
   };
 
   const selectProject = (projectId: string | null) => {
@@ -294,7 +360,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       taskLevel: 1,  
       status,
       taskType, 
-      parentID: 0,  
+      parentID: parseInt(projectId),  // Set parentID to project ID for top-level tasks
       level1ID: 0,
       level2ID: 0,
       level3ID: 0,
@@ -791,3 +857,7 @@ export const useTaskContext = (): TaskContextType => {
   }
   return context;
 };
+
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}

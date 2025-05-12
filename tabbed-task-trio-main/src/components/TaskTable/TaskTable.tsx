@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTaskContext } from "../../context/TaskContext";
 import { ActionItem, Priority, Status, Subtask, SubactionItem, Task } from "@/types/task";
 import { toast } from "sonner";
@@ -14,6 +14,12 @@ import { EmptyState } from "./EmptyState";
 import React from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+type SortDirection = 'asc' | 'desc' | 'none';
+
+const statusOrder = ['backlog', 'clarification', 'todo', 'inprogress', 'review', 'complete', 'closed'];
+const priorityOrder = ['none', 'low', 'normal', 'high', 'urgent'];
+
 export function TaskTable() {
   const {
     selectedProject,
@@ -61,6 +67,13 @@ export function TaskTable() {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState<number>(15); // Default is 15px
 
+  const [sortConfig, setSortConfig] = useState<{
+    [status: string]: {
+      key: string;
+      direction: SortDirection;
+    };
+  }>({});
+
   // New function to handle toggle expanded for action items
   const handleToggleActionItemExpand = (projectId: string, taskId: string, subtaskId: string, actionItemId: string) => {
     if (!selectedProject) return;
@@ -95,27 +108,123 @@ export function TaskTable() {
     }
   };
 
-  if (!selectedProject) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Please select a project to view tasks</p>
-      </div>
-    );
-  }
+  const sortItems = (items: any[], key: string, dir: 'asc' | 'desc' | 'none'): any[] => {
+    if (dir === 'none') return items;
+    
+    return [...items].sort((a, b) => {
+      let valA, valB;
+      
+      switch(key) {
+        case 'status':
+          valA = statusOrder.indexOf(a.status || 'backlog');
+          valB = statusOrder.indexOf(b.status || 'backlog');
+          break;
+        case 'priority':
+          valA = priorityOrder.indexOf(a.priority || 'none');
+          valB = priorityOrder.indexOf(b.priority || 'none');
+          break;
+        case 'dueDate':
+          valA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+          valB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+          break;
+        case 'estimatedTime':
+          valA = (a.estimatedTime?.hours || 0) * 60 + (a.estimatedTime?.minutes || 0);
+          valB = (b.estimatedTime?.hours || 0) * 60 + (b.estimatedTime?.minutes || 0);
+          break;
+        case 'name':
+          valA = a.name?.toLowerCase() || '';
+          valB = b.name?.toLowerCase() || '';
+          break;
+        default:
+          valA = a[key];
+          valB = b[key];
+      }
 
-  // Ensure tasks is always an array
+      if (valA < valB) return dir === 'asc' ? -1 : 1;
+      if (valA > valB) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const handleSortChange = (status: string, key: string, direction: 'asc' | 'desc' | 'none') => {
+    setSortConfig(prev => ({
+      ...prev,
+      [status]: { key, direction }
+    }));
+  };
+
+  // Get sorted tasks for a specific status
+  const getSortedTasks = (tasks: any[], status: string) => {
+    const config = sortConfig[status];
+    if (!config || config.direction === 'none') return tasks;
+
+    return sortItems(tasks, config.key, config.direction).map(item => ({
+      ...item,
+      subtasks: item.subtasks ? getSortedTasks(item.subtasks, status) : [],
+      actionItems: item.actionItems ? getSortedTasks(item.actionItems, status) : [],
+      subactionItems: item.subactionItems ? getSortedTasks(item.subactionItems, status) : []
+    }));
+  };
+
+  // Update the tasks assignment to use the original tasks
   const tasks = selectedProject?.tasks || [];
 
-  // Group tasks by status
-  const groupedTasks = tasks.reduce((acc, task) => {
-    const status = task.status.toLowerCase();
-    if (!acc[status]) acc[status] = [];
-    acc[status].push(task);
-    return acc;
-  }, {} as Record<string, Task[]>);
+  // Track which statuses have tasks
+  const [visibleStatuses, setVisibleStatuses] = useState<Set<Status>>(new Set(['todo']));
 
-  // Define the order of status tables
-  const statusOrder: Status[] = ['todo', 'inprogress', 'complete', 'review', 'closed', 'backlog', 'clarification'];
+  // Group tasks by status
+  const groupedTasks = useMemo(() => {
+    const grouped = tasks.reduce((acc, task) => {
+      const status = task.status || 'backlog';
+      if (!acc[status]) {
+        acc[status] = [];
+      }
+      acc[status].push(task);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    return grouped;
+  }, [tasks]);
+
+  // Effect to update visible statuses when tasks change
+  useEffect(() => {
+    if (!selectedProject) return;
+    
+    const statuses = new Set<Status>(['todo']); // Always include 'todo'
+    
+    // Find all statuses that have at least one task
+    const findAllStatuses = (items: any[]) => {
+      items.forEach(item => {
+        if (item.status) {
+          statuses.add(item.status);
+        }
+        if (item.subtasks) findAllStatuses(item.subtasks);
+        if (item.actionItems) findAllStatuses(item.actionItems);
+        if (item.subactionItems) findAllStatuses(item.subactionItems);
+      });
+    };
+    
+    findAllStatuses(selectedProject.tasks);
+    setVisibleStatuses(statuses);
+  }, [selectedProject]);
+
+  // Status columns in the desired order, filtered by visible statuses and whether they have tasks
+  const statusColumns = useMemo(() => {
+    const allStatuses = ['backlog', 'clarification', 'todo', 'inprogress', 'review', 'complete', 'closed'];
+    
+    // First, get all statuses that have tasks
+    const statusesWithTasks = allStatuses.filter(status => {
+      if (status === 'todo') return true; // Always include 'todo'
+      return (groupedTasks[status] || []).length > 0;
+    });
+    
+    // Then sort them with 'todo' always first, and the rest in their original order
+    return statusesWithTasks.sort((a, b) => {
+      if (a === 'todo') return -1;
+      if (b === 'todo') return 1;
+      return allStatuses.indexOf(a) - allStatuses.indexOf(b);
+    });
+  }, [groupedTasks]);
 
   // Status display names
   const statusDisplayNames: Record<Status, string> = {
@@ -316,23 +425,70 @@ export function TaskTable() {
     }
   };
 
-  return (
-    <div className="w-full overflow-x-auto px-2">
-      <TaskTableHeader
-        projectName={selectedProject?.name || ""}
-        fontSize={fontSize}
-        adjustFontSize={adjustFontSize}
-        timer={timer}
-        selectedProjectId={selectedProject?.id || ""}
-        onStopTimer={handleStopTimer}
-      />
-      
-      <div className="space-y-8">
-        {statusOrder.map((status) => {
-          const tasksForStatus = groupedTasks[status] || [];
-          if (status !== 'todo' && tasksForStatus.length === 0) return null;
+  // Update the updateTask function to ensure the status is visible when a task is moved to it
+  const handleUpdateTask = async (projectId: string, taskId: string, updates: Partial<Task>) => {
+    // If status is being updated, ensure it's in visibleStatuses
+    if (updates.status) {
+      setVisibleStatuses(prev => {
+        const newStatuses = new Set(prev);
+        newStatuses.add(updates.status as Status);
+        return newStatuses;
+      });
+    }
+    await updateTask(projectId, taskId, updates);
+  };
 
-          return (
+  // Update the updateSubtask function - no need to update visibleStatuses for subtasks
+  const handleUpdateSubtask = async (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
+    await updateSubtask(projectId, taskId, subtaskId, updates);
+  };
+
+  // Update the updateActionItem function - no need to update visibleStatuses for action items
+  const handleUpdateActionItem = async (
+    projectId: string, 
+    taskId: string, 
+    subtaskId: string, 
+    actionItemId: string, 
+    updates: Partial<ActionItem>
+  ) => {
+    await updateActionItem(projectId, taskId, subtaskId, actionItemId, updates);
+  };
+
+  // Update the updateSubactionItem function - no need to update visibleStatuses for subaction items
+  const handleUpdateSubactionItem = async (
+    projectId: string, 
+    taskId: string, 
+    subtaskId: string, 
+    actionItemId: string, 
+    subactionItemId: string, 
+    updates: Partial<SubactionItem>
+  ) => {
+    await updateSubactionItem(projectId, taskId, subtaskId, actionItemId, subactionItemId, updates);
+  };
+
+  return (
+    <div className="w-full overflow-x-auto px-2 pb-6">
+      {selectedProject && (
+        <TaskTableHeader
+          projectName={selectedProject?.name || ""}
+          fontSize={fontSize}
+          adjustFontSize={adjustFontSize}
+          timer={timer}
+          selectedProjectId={selectedProject?.id || ""}
+          onStopTimer={handleStopTimer}
+        />
+      )}
+      
+      {!selectedProject ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center p-6 bg-background rounded-lg shadow">
+            <h3 className="text-lg font-medium mb-2">No Project Selected</h3>
+            <p className="text-muted-foreground">Please select a project from the sidebar to get started</p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {statusColumns.map((status) => (
             <div key={status} className="bg-background rounded-md shadow overflow-hidden">
               {/* Status Header */}
               <div className="flex items-center justify-between px-4 py-2 border-b">
@@ -342,7 +498,7 @@ export function TaskTable() {
                 <Button 
                   variant="outline"
                   size="sm"
-                  onClick={() => handleAddItem('task', undefined, undefined, undefined, status)}
+                  onClick={() => handleAddItem('task', undefined, undefined, undefined, status as Status)}
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add Task
                 </Button>
@@ -360,7 +516,11 @@ export function TaskTable() {
                   <col style={{ width: '100px' }} />
                   <col style={{ width: '60px' }} />
                 </colgroup>
-                <TableHead />
+                <TableHead 
+                  onSortChange={handleSortChange}
+                  sortConfig={sortConfig}
+                  status={status}
+                />
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {/* Show NewItemRow if it matches the current status */}
                   {newItemState?.type === 'task' && newItemState.status === status && (
@@ -388,7 +548,7 @@ export function TaskTable() {
                     </tr>
                   )}
                   
-                  {tasksForStatus.length === 0 ? (
+                  {getSortedTasks(groupedTasks[status] || [], status).length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-2 py-1 text-center text-gray-500">
                         No tasks in this status.
@@ -396,7 +556,7 @@ export function TaskTable() {
                     </tr>
                   ) : (
                     <>
-                      {tasksForStatus.map((task) => (
+                      {getSortedTasks(groupedTasks[status] || [], status).map((task) => (
                         <React.Fragment key={`task-${task.id}`}>
                           <TaskRow
                             task={task}
@@ -407,7 +567,7 @@ export function TaskTable() {
                             editingItem={editingItem}
                             setEditingItem={setEditingItem}
                             toggleExpanded={toggleExpanded}
-                            updateTask={updateTask}
+                            updateTask={handleUpdateTask}
                             handleSaveEdit={handleSaveEdit}
                             handleAddItem={handleAddItem}
                           />
@@ -457,13 +617,7 @@ export function TaskTable() {
                                     editingItem={editingItem}
                                     setEditingItem={setEditingItem}
                                     toggleExpanded={toggleExpanded}
-                                    updateSubtask={(projectId, taskId, subtaskId, updates) => {
-                                      // Ensure status changes update the task's status
-                                      if (updates.status) {
-                                        updateTask(projectId, taskId, { status: updates.status });
-                                      }
-                                      return updateSubtask(projectId, taskId, subtaskId, updates);
-                                    }}
+                                    updateSubtask={handleUpdateSubtask}
                                     handleSaveEdit={handleSaveEdit}
                                     handleDeleteItem={handleDeleteItem}
                                     handleAddItem={handleAddItem}
@@ -520,7 +674,7 @@ export function TaskTable() {
                                             editingItem={editingItem}
                                             setEditingItem={setEditingItem}
                                             toggleExpanded={handleToggleActionItemExpand}
-                                            updateActionItem={updateActionItem}
+                                            updateActionItem={handleUpdateActionItem}
                                             handleSaveEdit={handleSaveEdit}
                                             handleAddItem={handleAddItem}
                                             startTimer={handleStartTimer}
@@ -585,7 +739,7 @@ export function TaskTable() {
                                                   setHoveredRowId={setHoveredRowId}
                                                   editingItem={editingItem}
                                                   setEditingItem={setEditingItem}
-                                                  updateSubactionItem={updateSubactionItem}
+                                                  updateSubactionItem={handleUpdateSubactionItem}
                                                   handleSaveEdit={handleSaveEdit}
                                                   startTimer={handleStartTimer}
                                                   stopTimer={handleStopTimer}
@@ -609,9 +763,9 @@ export function TaskTable() {
                 </tbody>
               </table>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
       <TimerDialog
         open={isTimerDialogOpen}
         onClose={() => {
