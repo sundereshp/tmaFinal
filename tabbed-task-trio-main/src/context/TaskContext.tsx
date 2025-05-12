@@ -69,7 +69,11 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
         // If no projects exist, create a default one
         if (fetchedProjects.length === 0) {
-          await addProject('Default Project');
+          const defaultProject = await addProject('Default Project');
+          setSelectedProjectId(defaultProject.id);
+        } else {
+          // Select the first project by default
+          setSelectedProjectId(fetchedProjects[0].id);
         }
 
         setIsLoading(false);
@@ -81,6 +85,31 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     };
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/projects');
+        if (!response.ok) throw new Error('Failed to fetch projects');
+
+        const projects = await response.json();
+        setProjects(projects);
+
+        // If there's a selected project, fetch its tasks
+        if (selectedProjectId) {
+          fetchTasks(selectedProjectId);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setError('Failed to load projects');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [selectedProjectId]);
+
   // Updated buildTaskTree function
   function buildTaskTree(tasks: any[]) {
     const tasksById: Record<string, any> = {};
@@ -116,10 +145,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     return rootTasks;
   }
 
-
-
-
-
   const fetchTasks = async (projectId: string) => {
     try {
       const response = await fetch(`http://localhost:5000/api/tasks/project/${projectId}`);
@@ -138,31 +163,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       throw err;
     }
   };
-
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/projects');
-        if (!response.ok) throw new Error('Failed to fetch projects');
-
-        const projects = await response.json();
-        setProjects(projects);
-
-        // If there's a selected project, fetch its tasks
-        if (selectedProjectId) {
-          fetchTasks(selectedProjectId);
-        }
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        setError('Failed to load projects');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProjects();
-  }, [selectedProjectId]);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
@@ -333,7 +333,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-
   const updateTask = async (projectId: string, taskId: string, updates: Partial<Task>) => {
     try {
       const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
@@ -343,7 +342,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) throw new Error('Failed to update task');
-
 
       setProjects(projects.map(project => {
         if (project.id === projectId) {
@@ -361,7 +359,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       throw err;
     }
   };
-
 
   const addSubtask = async (projectId: string, taskId: string, name: string, status: Status = 'todo') => {
     if (!name.trim()) return;
@@ -396,7 +393,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateSubtask = async (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
-
     try {
       const response = await fetch(`http://localhost:5000/api/tasks/${subtaskId}`, {
         method: 'PUT',
@@ -430,8 +426,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       throw err;
     }
   };
-
-
 
   const addActionItem = async (projectId: string, taskId: string, subtaskId: string, name: string, status: Status = 'todo') => {
     try {
@@ -478,39 +472,38 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) throw new Error('Failed to update action item');
 
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask => {
-                  if (subtask.id === subtaskId) {
-                    return {
-                      ...subtask,
-                      actionItems: subtask.actionItems.map(actionItem =>
-                        actionItem.id === actionItemId ? { ...actionItem, ...updates } : actionItem
-                      )
-                    };
-                  }
-                  return subtask;
-                })
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
+      setProjects(projects.map(project => {
+        if (project.id === projectId) {
+          return {
+            ...project,
+            tasks: project.tasks.map(task => {
+              if (task.id === taskId) {
+                return {
+                  ...task,
+                  subtasks: task.subtasks.map(subtask => {
+                    if (subtask.id === subtaskId) {
+                      return {
+                        ...subtask,
+                        actionItems: subtask.actionItems.map(actionItem =>
+                          actionItem.id === actionItemId ? { ...actionItem, ...updates } : actionItem
+                        )
+                      };
+                    }
+                    return subtask;
+                  })
+                };
+              }
+              return task;
+            })
+          };
+        }
+        return project;
+      }));
     } catch (err) {
       console.error('Error updating action item:', err);
       throw err;
     }
   };
-
 
   const addSubactionItem = async (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string, status: Status = 'todo') => {
     try {
@@ -558,46 +551,47 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) throw new Error('Failed to update subaction item');
 
-    setProjects(projects.map(project => {
-      if (project.id === projectId) {
-        return {
-          ...project,
-          tasks: project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                subtasks: task.subtasks.map(subtask => {
-                  if (subtask.id === subtaskId) {
-                    return {
-                      ...subtask,
-                      actionItems: subtask.actionItems.map(actionItem => {
-                        if (actionItem.id === actionItemId) {
-                          return {
-                            ...actionItem,
-                            subactionItems: actionItem.subactionItems.map(subactionItem =>
-                              subactionItem.id === subactionItemId ? { ...subactionItem, ...updates } : subactionItem
-                            )
-                          };
-                        }
-                        return actionItem;
-                      })
-                    };
-                  }
-                  return subtask;
-                })
-              };
-            }
-            return task;
-          })
-        };
-      }
-      return project;
-    }));
+      setProjects(projects.map(project => {
+        if (project.id === projectId) {
+          return {
+            ...project,
+            tasks: project.tasks.map(task => {
+              if (task.id === taskId) {
+                return {
+                  ...task,
+                  subtasks: task.subtasks.map(subtask => {
+                    if (subtask.id === subtaskId) {
+                      return {
+                        ...subtask,
+                        actionItems: subtask.actionItems.map(actionItem => {
+                          if (actionItem.id === actionItemId) {
+                            return {
+                              ...actionItem,
+                              subactionItems: actionItem.subactionItems.map(subactionItem =>
+                                subactionItem.id === subactionItemId ? { ...subactionItem, ...updates } : subactionItem
+                              )
+                            };
+                          }
+                          return actionItem;
+                        })
+                      };
+                    }
+                    return subtask;
+                  })
+                };
+              }
+              return task;
+            })
+          };
+        }
+        return project;
+      }));
     } catch (err) {
       console.error('Error updating subaction item:', err);
       throw err;
     }
   };
+
   const updateItem = async (itemId: string, updates: any) => {
     try {
       const response = await fetch(`http://localhost:5000/api/tasks/${itemId}`, {
@@ -617,6 +611,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       throw err;
     }
   };
+
   // Unified delete function for all levels
   const deleteItem = async (projectId: string, itemId: string) => {
     try {
@@ -636,7 +631,6 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       throw err;
     }
   };
-
 
   const toggleExpanded = (
     projectId: string, 
