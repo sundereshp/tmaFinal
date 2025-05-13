@@ -14,6 +14,7 @@ import { TaskTypeDropdown } from "./TaskTypeDropdown";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { useTaskContext } from "../../context/TaskContext";
+import { DescriptionCell } from "./description";
 
 interface SubactionItemRowProps {
   subactionItem: SubactionItem;
@@ -128,27 +129,32 @@ export function SubactionItemRow({
                 />
               ) : (
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center justify-between w-full">
-                      <span className="truncate">
-                        {subactionItem.name}
-                      </span>
-                      {!editingItem && hoveredRowId === subactionItem.id && (
-                        <div className="flex-shrink-0 ml-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleEditName}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Pencil size={12} />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{subactionItem.name}</TooltipContent>
-                </Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="truncate flex-grow">
+                      {subactionItem.name}
+                    </span>
+
+                    {!editingItem && hoveredRowId === subactionItem.id && (
+
+                      <div className="flex items-center space-x-2">
+                        <DescriptionCell
+                          description={subactionItem.description || ""}
+                          onChange={(newDescription) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { description: newDescription })}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleEditName}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Pencil size={12} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+              </Tooltip>
               )}
             </div>
           </div>

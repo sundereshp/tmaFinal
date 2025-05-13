@@ -14,6 +14,7 @@ import { ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
 import { TaskTypeDropdown } from "./TaskTypeDropdown";
 import { useState } from "react";
 import { useTaskContext } from "@/context/TaskContext";
+import { DescriptionCell } from "./description";
 
 interface ActionItemRowProps {
   actionItem: ActionItem;
@@ -113,11 +114,11 @@ export function ActionItemRow({
 
           {/* Status Dropdown */}
           <div className="mr-2">
-            <TaskTypeDropdown 
-              taskType={actionItem.taskType || 'task'} 
-              status={actionItem.status || 'todo'} 
-              onTypeChange={handleTaskTypeChange} 
-              onStatusChange={handleStatusChange} 
+            <TaskTypeDropdown
+              taskType={actionItem.taskType || 'task'}
+              status={actionItem.status || 'todo'}
+              onTypeChange={handleTaskTypeChange}
+              onStatusChange={handleStatusChange}
             />
           </div>
 
@@ -139,11 +140,17 @@ export function ActionItemRow({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center justify-between w-full">
-                    <span className="truncate">
+                    <span className="truncate flex-grow">
                       {actionItem.name}
                     </span>
+
                     {!editingItem && hoveredRowId === actionItem.id && (
-                      <div className="flex-shrink-0 ml-2">
+
+                      <div className="flex items-center space-x-2">
+                        <DescriptionCell
+                          description={actionItem.description || ""}
+                          onChange={(newDescription) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { description: newDescription })}
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
@@ -156,9 +163,7 @@ export function ActionItemRow({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleAddItem('subactionItem', taskId, subtaskId, actionItem.id)}
-                          className={cn("h-6 w-6 p-0", isFormsType && "opacity-50 cursor-not-allowed")}
-                          disabled={isFormsType}
-                          title={isFormsType ? "Cannot add subaction items to forms type tasks" : "Add subaction item"}
+                          className="h-6 w-6 p-0"
                         >
                           <Plus size={12} />
                         </Button>
@@ -166,7 +171,6 @@ export function ActionItemRow({
                     )}
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>{actionItem.name}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -214,7 +218,7 @@ export function ActionItemRow({
           />
         </div>
       </td>
-      
+
       <td className="px-2 py-1 overflow-hidden" style={{ width: '150px', maxWidth: '150px' }}>
         <div className="truncate">
           <EstimatedTimeCell

@@ -14,6 +14,7 @@ import { TaskTypeDropdown } from "./TaskTypeDropdown";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTaskContext } from "@/context/TaskContext";
+import { DescriptionCell } from "./description";
 
 interface SubtaskRowProps {
   subtask: Subtask;
@@ -59,7 +60,7 @@ export function SubtaskRow({
 }: SubtaskRowProps) {
   const { deleteItem } = useTaskContext();
   const isFormsType = parentTaskType === 'forms';
-  
+
   const handleEditName = () => {
     setEditingItem({
       id: subtask.id,
@@ -101,11 +102,11 @@ export function SubtaskRow({
             </button>
             {/* Status Dropdown */}
             <div className="mr-2">
-              <TaskTypeDropdown 
-                taskType={subtask.taskType || 'task'} 
-                status={subtask.status || 'todo'} 
-                onTypeChange={handleTaskTypeChange} 
-                onStatusChange={handleStatusChange} 
+              <TaskTypeDropdown
+                taskType={subtask.taskType || 'task'}
+                status={subtask.status || 'todo'}
+                onTypeChange={handleTaskTypeChange}
+                onStatusChange={handleStatusChange}
               />
             </div>
           </div>
@@ -126,9 +127,17 @@ export function SubtaskRow({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center justify-between w-full">
-                    <span className="truncate">{subtask.name}</span>
+                    <span className="truncate flex-grow">
+                      {subtask.name}
+                    </span>
+
                     {!editingItem && hoveredRowId === subtask.id && (
-                      <div className="flex-shrink-0 ml-2">
+
+                      <div className="flex items-center space-x-2">
+                        <DescriptionCell
+                          description={subtask.description || ""}
+                          onChange={(newDescription) => updateSubtask(selectedProjectId, taskId, subtask.id, { description: newDescription })}
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
@@ -141,9 +150,7 @@ export function SubtaskRow({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleAddItem('actionItem', taskId, subtask.id)}
-                          className={cn("h-6 w-6 p-0", isFormsType && "opacity-50 cursor-not-allowed")}
-                          disabled={isFormsType}
-                          title={isFormsType ? "Cannot add action items to forms type tasks" : "Add action item"}
+                          className="h-6 w-6 p-0"
                         >
                           <Plus size={12} />
                         </Button>
@@ -151,7 +158,6 @@ export function SubtaskRow({
                     )}
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>{subtask.name}</TooltipContent>
               </Tooltip>
             )}
           </div>

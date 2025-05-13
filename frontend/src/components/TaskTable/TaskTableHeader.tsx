@@ -10,8 +10,6 @@ import 'react-datepicker/dist/react-datepicker.css';
 
 interface TaskTableHeaderProps {
   projectName: string;
-  fontSize: number;
-  adjustFontSize: (direction: 'increase' | 'decrease') => void;
   timer: {
     isRunning: boolean;
     projectId: string | null;
@@ -23,8 +21,6 @@ interface TaskTableHeaderProps {
 
 export function TaskTableHeader({
   projectName,
-  fontSize,
-  adjustFontSize,
   timer,
   selectedProjectId,
   onStopTimer
@@ -61,29 +57,6 @@ export function TaskTableHeader({
         <h1 className="text-2xl font-bold mr-4">{projectName}</h1>
 
         <div className="flex items-center space-x-1 bg-muted/50 rounded-md p-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("h-7 w-7 p-0", fontSize <= 10 && "text-muted-foreground")}
-            onClick={() => adjustFontSize('decrease')}
-            disabled={fontSize <= 10}
-          >
-            <MinusIcon className="h-4 w-4" />
-          </Button>
-
-          <span className="text-xs font-medium px-1">{fontSize}px</span>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("h-7 w-7 p-0", fontSize >= 20 && "text-muted-foreground")}
-            onClick={() => adjustFontSize('increase')}
-            disabled={fontSize >= 20}
-          >
-            <PlusIcon className="h-4 w-4" />
-          </Button>
-
-          {/* Dropdown for Description and Dates */}
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0">

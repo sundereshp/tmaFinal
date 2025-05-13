@@ -159,7 +159,6 @@ export function TaskRow({
                     )}
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>{task.name}</TooltipContent>
               </Tooltip>
             )}
           </div>

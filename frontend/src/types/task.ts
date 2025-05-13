@@ -37,6 +37,7 @@ export interface SubactionItem {
   assignee2ID?: number;
   assignee3ID?: number;
   taskType: TaskType;
+  description?: string;
 }
 
 export interface ActionItem {
@@ -59,6 +60,7 @@ export interface ActionItem {
   assignee1ID?: number;
   assignee2ID?: number;
   assignee3ID?: number;
+  description?: string;
 }
 
 export interface Subtask {
@@ -81,6 +83,7 @@ export interface Subtask {
   assignee1ID?: number;
   assignee2ID?: number;
   assignee3ID?: number;
+  description?: string;
 }
 
 export type TaskType = 'task' | 'milestone' | 'forms';
