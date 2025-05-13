@@ -245,7 +245,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     try {
       const sourceProject = projects.find(p => p.id === projectId);
       if (!sourceProject) return;
-
+  
       // Extract base name by removing any existing number in parentheses
       const baseName = sourceProject.name.replace(/\s*\(\d+\)$/, '').trim();
       
@@ -261,11 +261,11 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
             existingNumbers.push(parseInt(match[1], 10));
           } else {
             // If it's exactly the base name (no number), count it as (1)
-            existingNumbers.push(1);
+            existingNumbers.push(0);
           }
         }
       });
-
+  
       // Find the lowest unused positive integer
       let nextNumber = 1;
       while (existingNumbers.includes(nextNumber)) {
@@ -273,7 +273,13 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       }
       
       // Create the new project name with the next available number
-      const newProjectName = `${baseName} (${nextNumber})`;
+      let newProjectName = `${baseName} (${nextNumber})`;
+      
+      // Check if the new project name already exists
+      while (projects.some(project => project.name === newProjectName)) {
+        nextNumber++;
+        newProjectName = `${baseName} (${nextNumber})`;
+      }
       
       // Create the new project via API
       const projectResponse = await fetch('http://localhost:5000/api/projects', {
@@ -287,11 +293,11 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           wsID: 1
         })
       });
-
+  
       if (!projectResponse.ok) throw new Error('Failed to create project copy');
       
       const newProject = await projectResponse.json();
-
+  
       // Fetch the source project's tasks
       const tasksResponse = await fetch(`http://localhost:5000/api/tasks/project/${projectId}`);
       if (!tasksResponse.ok) throw new Error('Failed to fetch tasks for duplication');
