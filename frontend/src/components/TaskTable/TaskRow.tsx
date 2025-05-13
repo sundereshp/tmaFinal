@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -16,6 +18,7 @@ import { RowActions } from "./RowActions";
 import { EstimatedTimeCell } from "./EstimatedTimeCell";
 import { useTaskContext } from "@/context/TaskContext";
 import { TaskTypeDropdown } from "./TaskTypeDropdown";
+import { DescriptionCell } from "./description";
 
 interface TaskRowProps {
   task: Task;
@@ -58,7 +61,10 @@ export function TaskRow({
   stopTimer
 }: TaskRowProps) {
   const { deleteItem } = useTaskContext();
-  
+
+  const [showInfoEditor, setShowInfoEditor] = useState(false);
+  const [infoContent, setInfoContent] = useState(task.description || "");
+  const [infoDropdownVisible, setInfoDropdownVisible] = useState(false);
   const handleEditName = () => {
     setEditingItem({
       id: task.id,
@@ -87,8 +93,8 @@ export function TaskRow({
     >
       <td className="px-2 py-1 overflow-hidden">
         <div className="flex items-center w-full min-w-0">
-          {/* Chevron Toggle */}
-          <div className="flex-shrink-0 flex items-center">
+          {/* Chevron, Task Type Dropdown, and Name */}
+          <div className="flex items-center w-full">
             <button
               className="toggler mr-2"
               onClick={(e) => {
@@ -99,19 +105,13 @@ export function TaskRow({
               {task.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </button>
 
-            {/* Task Type Dropdown */}
-            <div className="mr-2">
-              <TaskTypeDropdown 
-                taskType={task.taskType || 'task'} 
-                status={task.status || 'todo'} 
-                onTypeChange={handleTaskTypeChange} 
-                onStatusChange={handleStatusChange} 
-              />
-            </div>
-          </div>
+            <TaskTypeDropdown
+              taskType={task.taskType || 'task'}
+              status={task.status || 'todo'}
+              onTypeChange={handleTaskTypeChange}
+              onStatusChange={handleStatusChange}
+            />
 
-          {/* Name and buttons */}
-          <div className="flex-1 min-w-0">
             {editingItem && editingItem.id === task.id ? (
               <Input
                 value={editingItem.name}
@@ -128,11 +128,17 @@ export function TaskRow({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center justify-between w-full">
-                    <span className="truncate">
+                    <span className="truncate flex-grow">
                       {task.name}
                     </span>
+
                     {!editingItem && hoveredRowId === task.id && (
-                      <div className="flex-shrink-0 ml-2">
+
+                      <div className="flex items-center space-x-2">
+                        <DescriptionCell
+                          description={task.description || ""}
+                          onChange={(newDescription) => updateTask(selectedProjectId, task.id, { description: newDescription })}
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
@@ -178,6 +184,29 @@ export function TaskRow({
       </td>
       <td className="px-2 py-1 overflow-hidden" style={{ width: '120px', maxWidth: '120px' }}>
         <div className="truncate">
+          {showInfoEditor && (
+            <div className="mt-2">
+              <Button size="sm" onClick={() => {
+                updateTask(selectedProjectId, task.id, { description: infoContent });
+                setShowInfoEditor(false);
+              }}>
+                Save
+              </Button>
+            </div>
+          )}
+          {showInfoEditor && (
+            <div className="mt-2">
+              <Input
+                value={infoContent}
+                onChange={(e) => setInfoContent(e.target.value)}
+                onBlur={() => {
+                  updateTask(selectedProjectId, task.id, { description: infoContent });
+                  setShowInfoEditor(false);
+                }}
+                autoFocus
+              />
+            </div>
+          )}
           <DueDateCell
             dueDate={task.dueDate}
             onChange={(dueDate) => updateTask(selectedProjectId, task.id, { dueDate })}
@@ -211,8 +240,8 @@ export function TaskRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
         <div className="truncate">
           <CommentsCell
-            comments={task.description}
-            onChange={(description) => updateTask(selectedProjectId, task.id, { description })}
+            comments={task.comments || ""} // Use task.comments, not task.description
+            onChange={(comments) => updateTask(selectedProjectId, task.id, { comments })}
           />
         </div>
       </td>

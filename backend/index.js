@@ -56,9 +56,9 @@ app.post('/api/projects', (req, res) => {
         });
     }
 
-    const {
+    const { description,
         userID, name, startDate, endDate,
-        description = '',
+        
         estHours = 0, actHours = 0, wsID
     } = req.body;
 
@@ -148,8 +148,8 @@ app.get('/api/tasks', (req, res) => {
 app.post('/api/tasks', (req, res) => {
     console.log('POST /api/tasks - Received body:', req.body);
 
-    const {
-        wsID, userID, projectID, name, description = '',
+    const { description,
+        wsID, userID, projectID, name,
         taskLevel = 1, status = 'todo', parentID = 0,
         assignee1ID = 0, assignee2ID = 0, assignee3ID = 0,
         estHours = 0, estPrevHours = [], actHours = 0,
@@ -182,6 +182,7 @@ app.post('/api/tasks', (req, res) => {
         estPrevHours,
         actHours: parseFloat(actHours),
         isExceeded,
+        priority: 'low',
         info,
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString()

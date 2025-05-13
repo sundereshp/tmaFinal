@@ -115,6 +115,7 @@ export interface Task {
   actHours?: number;
   isExceeded?: number;
   info?: Record<string, any>;
+  comments?: string;
 }
 
 export interface Project {
