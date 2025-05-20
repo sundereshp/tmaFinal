@@ -115,26 +115,33 @@ export function ActionItemRow({
                         {actionItem.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                       </button>
 
-                      <div className="flex items-center w-full">
-                        <div className="flex items-center min-w-0 flex-1">
-                          {editingItem && editingItem.id === actionItem.id ? (
-                            <Input
-                              value={editingItem.name}
-                              onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                              onBlur={handleSaveEdit}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveEdit();
-                                if (e.key === 'Escape') setEditingItem(null);
-                              }}
-                              autoFocus
-                              className="w-full"
-                            />
-                          ) : (
-                            <span className="truncate whitespace-nowrap overflow-hidden min-w-0 text-ellipsis">
-                              {actionItem.name}
-                            </span>
-                          )}
-                        </div>
+                      <div className="mr-2">
+                        <TaskTypeDropdown
+                          taskType={actionItem.taskType || 'task'}
+                          status={actionItem.status || 'todo'}
+                          onTypeChange={handleTaskTypeChange}
+                          onStatusChange={handleStatusChange}
+                        />
+                      </div>
+
+                      <div className="flex items-center min-w-0 flex-1">
+                        {editingItem && editingItem.id === actionItem.id ? (
+                          <Input
+                            value={editingItem.name}
+                            onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                            onBlur={handleSaveEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveEdit();
+                              if (e.key === 'Escape') setEditingItem(null);
+                            }}
+                            autoFocus
+                            className="w-full"
+                          />
+                        ) : (
+                          <span className="truncate whitespace-nowrap overflow-hidden min-w-0 text-ellipsis">
+                            {actionItem.name}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </TooltipTrigger>

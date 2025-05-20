@@ -153,7 +153,7 @@ app.post('/api/tasks', (req, res) => {
         taskLevel = 1, status = 'todo', parentID = 0,
         assignee1ID = 0, assignee2ID = 0, assignee3ID = 0,
         estHours = 0, estPrevHours = [], actHours = 0,
-        isExceeded = 0, info = {}
+        isExceeded = 0, info = {}, taskType = 'task'
     } = req.body;
 
     const project = projects.find(p => p.id === parseInt(projectID));
@@ -184,6 +184,7 @@ app.post('/api/tasks', (req, res) => {
         isExceeded,
         priority: 'low',
         info,
+        taskType: 'task',
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString()
     };

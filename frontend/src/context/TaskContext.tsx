@@ -26,11 +26,11 @@ interface TaskContextType {
   selectProject: (projectId: string | null) => void;
   addTask: (projectId: string, name: string, status?: Status, taskType?: TaskType) => void;
   updateTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
-  addSubtask: (projectId: string, taskId: string, name: string, status?: Status) => void;
+  addSubtask: (projectId: string, taskId: string, name: string, status?: Status, taskType?: TaskType) => void;
   updateSubtask: (projectId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => void;
-  addActionItem: (projectId: string, taskId: string, subtaskId: string, name: string, status?: Status) => void;
+  addActionItem: (projectId: string, taskId: string, subtaskId: string, name: string, status?: Status, taskType?: TaskType) => void;
   updateActionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
-  addSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string, status?: Status) => void;
+  addSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string, status?: Status, taskType?: TaskType) => void;
   updateSubactionItem: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, subactionItemId: string, updates: Partial<SubactionItem>) => void;
   toggleExpanded: (projectId: string, taskId: string, type: "task" | "subtask" | "actionItem" | "subactionItem", subtaskId?: string, actionItemId?: string, subactionItemId?: string) => void;
   startTimer: (projectId: string, actionItemId: string) => void;
@@ -365,7 +365,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       projectID: parseInt(projectId),
       taskLevel: 1,  
       status,
-      taskType, 
+      taskType: 'task', // Explicitly set default task type
       parentID: parseInt(projectId),  // Set parentID to project ID for top-level tasks
       level1ID: 0,
       level2ID: 0,
@@ -375,7 +375,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       assignee2ID: 0,
       assignee3ID: 0,
       estHours: 0,
-      estPrevHours: 0, // Changed from number[] to number
+      estPrevHours: 0,
       actHours: 0,
       isExceeded: 0,
       info: {},
@@ -440,7 +440,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   }, [selectedProject, projects]);
 
-  const addSubtask = async (projectId: string, taskId: string, name: string, status: Status = 'todo') => {
+  const addSubtask = async (projectId: string, taskId: string, name: string, status: Status = 'todo', taskType: TaskType = 'task') => {
     if (!name.trim()) return;
 
     const newSubtaskPayload = {
@@ -450,6 +450,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       projectID: parseInt(projectId),
       taskLevel: 2,
       status,
+      taskType,
       parentID: parseInt(taskId),
       // Level IDs will be set by backend
     };
@@ -507,7 +508,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addActionItem = async (projectId: string, taskId: string, subtaskId: string, name: string, status: Status = 'todo') => {
+  const addActionItem = async (projectId: string, taskId: string, subtaskId: string, name: string, status: Status = 'todo', taskType: TaskType = 'task') => {
     try {
       const newActionItemPayload = {
         name,
@@ -516,6 +517,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         projectID: parseInt(projectId),
         taskLevel: 3,
         status,
+        taskType,
         parentID: parseInt(subtaskId),
       };
 
@@ -585,7 +587,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addSubactionItem = async (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string, status: Status = 'todo') => {
+  const addSubactionItem = async (projectId: string, taskId: string, subtaskId: string, actionItemId: string, name: string, status: Status = 'todo', taskType: TaskType = 'task') => {
     try {
       const newSubactionPayload = {
         name,
@@ -594,6 +596,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         projectID: parseInt(projectId),
         taskLevel: 4,
         status,
+        taskType,
         parentID: parseInt(actionItemId),
       };
 

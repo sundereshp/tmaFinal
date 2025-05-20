@@ -106,11 +106,19 @@ export function SubactionItemRow({
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center w-full min-w-0 gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center w-full min-w-0 gap-2">
-                      {/* TaskTypeDropdown */}
-                      <div className="flex items-center w-full">
+                <div className="flex items-center w-full">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center w-full min-w-0 gap-2">
+                        <div className="mr-2">
+                          <TaskTypeDropdown
+                            taskType={subactionItem.taskType || 'task'}
+                            status={subactionItem.status || 'todo'}
+                            onTypeChange={handleTaskTypeChange}
+                            onStatusChange={handleStatusChange}
+                          />
+                        </div>
+
                         <div className="flex items-center min-w-0 flex-1">
                           {editingItem && editingItem.id === subactionItem.id ? (
                             <Input
@@ -131,27 +139,27 @@ export function SubactionItemRow({
                           )}
                         </div>
                       </div>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>{subactionItem.name}</TooltipContent>
-                </Tooltip>
+                    </TooltipTrigger>
+                    <TooltipContent>{subactionItem.name}</TooltipContent>
+                  </Tooltip>
 
-                {hoveredRowId === subactionItem.id && (
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <DescriptionCell
-                      description={subactionItem.description || ""}
-                      onChange={(newDescription) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { description: newDescription })}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleEditName}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Pencil size={12} />
-                    </Button>
-                  </div>
-                )}
+                  {hoveredRowId === subactionItem.id && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <DescriptionCell
+                        description={subactionItem.description || ""}
+                        onChange={(newDescription) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { description: newDescription })}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleEditName}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Pencil size={12} />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </TooltipTrigger>
           </Tooltip>
