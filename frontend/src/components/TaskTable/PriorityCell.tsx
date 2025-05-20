@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 import { Priority } from "../../types/task";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +6,7 @@ interface PriorityCellProps {
   priority: Priority;
   onChange: (value: Priority) => void;
   disabled?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const priorityOptions = [
@@ -25,7 +25,7 @@ const priorityColors = {
   none: "text-priority-none"
 };
 
-export function PriorityCell({ priority, onChange, disabled = false }: PriorityCellProps) {
+export function PriorityCell({ priority, onChange, disabled = false, onOpenChange }: PriorityCellProps) {
   const selectedOption = priorityOptions.find(option => option.value === priority);
   
   return (
@@ -33,9 +33,13 @@ export function PriorityCell({ priority, onChange, disabled = false }: PriorityC
       disabled={disabled}
       value={priority} 
       onValueChange={(value) => onChange(value as Priority)}
+      onOpenChange={onOpenChange}
     >
       <SelectTrigger 
-        className={cn("border-none w-16", priorityColors[priority])}
+        className={cn(
+          "flex h-8 w-16 items-center justify-between rounded-md border-none bg-background px-2 py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+          priorityColors[priority]
+        )}
       >
         <SelectValue>
           {selectedOption?.icon || "🟡"}

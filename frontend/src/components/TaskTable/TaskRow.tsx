@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Status, Task, TaskType } from "@/types/task";
+import { Status, Task, TaskType, Priority } from "@/types/task";
 import { cn } from "@/lib/utils";
 import { StatusCell } from "./StatusCell";
 import { DueDateCell } from "./DueDateCell";
@@ -39,7 +39,6 @@ interface TaskRowProps {
   toggleExpanded: (projectId: string, taskId: string, type: "task" | "subtask", subtaskId?: string) => void;
   updateTask: (projectId: string, taskId: string, updates: Partial<Task>) => void;
   handleSaveEdit: () => void;
-
   handleAddItem: (type: 'task' | 'subtask' | 'actionItem' | 'subactionItem', parentTaskId?: string, parentSubtaskId?: string, parentActionItemId?: string) => void;
   startTimer?: (projectId: string, actionItemId: string) => void;
   stopTimer?: () => void;
@@ -62,6 +61,8 @@ export function TaskRow({
 }: TaskRowProps) {
   const { deleteItem } = useTaskContext();
 
+  const [activeDropdown, setActiveDropdown] = useState<"priority" | "status" | null>(null);
+
   const [showInfoEditor, setShowInfoEditor] = useState(false);
   const [infoContent, setInfoContent] = useState(task.description || "");
   const [infoDropdownVisible, setInfoDropdownVisible] = useState(false);
@@ -77,12 +78,30 @@ export function TaskRow({
     updateTask(selectedProjectId, task.id, { taskType });
   };
 
-  const handleUpdateTime = (estimatedTime: { hours: number; minutes: number } | null) => {
-    updateTask(selectedProjectId, task.id, { estimatedTime });
+  const handleUpdateTime = (decimalHours: number | null) => {
+    if (decimalHours === null) {
+      updateTask(selectedProjectId, task.id, { estHours: null });
+    } else {
+      updateTask(selectedProjectId, task.id, { estHours: decimalHours });
+    }
+  };
+
+  const handlePriorityChange = (priority: Priority) => {
+    updateTask(selectedProjectId, task.id, { priority });
+    setActiveDropdown(null); // Close dropdown after selection
   };
 
   const handleStatusChange = (status: Status) => {
     updateTask(selectedProjectId, task.id, { status });
+    setActiveDropdown(null); // Close dropdown after selection
+  };
+
+  const handlePriorityClick = () => {
+    setActiveDropdown("priority");
+  };
+
+  const handleStatusClick = () => {
+    setActiveDropdown("status");
   };
 
   return (
@@ -216,7 +235,14 @@ export function TaskRow({
         <div className="truncate">
           <PriorityCell
             priority={task.priority}
-            onChange={(priority) => updateTask(selectedProjectId, task.id, { priority })}
+            onChange={handlePriorityChange}
+            onOpenChange={(open) => {
+              if (open) {
+                setActiveDropdown("priority");
+              } else if (activeDropdown === "priority") {
+                setActiveDropdown(null);
+              }
+            }}
           />
         </div>
       </td>
@@ -224,15 +250,28 @@ export function TaskRow({
         <div className="truncate">
           <StatusCell
             status={task.status}
-            onChange={(status) => updateTask(selectedProjectId, task.id, { status })}
+            onChange={handleStatusChange}
+            onOpenChange={(open) => {
+              if (open) {
+                setActiveDropdown("status");
+              } else if (activeDropdown === "status") {
+                setActiveDropdown(null);
+              }
+            }}
           />
         </div>
       </td>
       <td className="px-2 py-1 overflow-hidden" style={{ width: '150px', maxWidth: '150px' }}>
         <div className="truncate">
           <EstimatedTimeCell
-            estimatedTime={task.estimatedTime}
-            onChange={handleUpdateTime}
+            estimatedTime={task.estHours || 0}
+            onChange={(decimalHours) => {
+              if (decimalHours === null) {
+                updateTask(selectedProjectId, task.id, { estHours: null });
+              } else {
+                updateTask(selectedProjectId, task.id, { estHours: decimalHours });
+              }
+            }}
           />
         </div>
       </td>

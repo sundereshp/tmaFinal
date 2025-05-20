@@ -375,7 +375,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       assignee2ID: 0,
       assignee3ID: 0,
       estHours: 0,
-      estPrevHours: [],
+      estPrevHours: 0, // Changed from number[] to number
       actHours: 0,
       isExceeded: 0,
       info: {},
@@ -407,6 +407,15 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   const updateTask = async (projectId: string, taskId: string, updates: Partial<Task>) => {
     try {
+      // Track previous estimate if changing estHours
+      if (updates.estHours !== undefined) {
+        const currentEstimate = selectedProject?.tasks.find(t => t.id === taskId)?.estHours;
+        if (currentEstimate !== updates.estHours) {
+          updates.estPrevHours = currentEstimate || 0; // Store only the previous value
+        }
+      }
+
+      // Update the task
       const response = await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -414,21 +423,19 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!response.ok) throw new Error('Failed to update task');
-
-      setProjects(projects.map(project => {
-        if (project.id === projectId) {
-          return {
-            ...project,
-            tasks: project.tasks.map(task =>
-              task.id === taskId ? { ...task, ...updates } : task
-            )
-          };
-        }
-        return project;
-      }));
-    } catch (err) {
-      console.error('Error updating task:', err);
-      throw err;
+      
+      const updatedTask = await response.json();
+      setProjects(projects.map(project => 
+        project.id === projectId ? { 
+          ...project, 
+          tasks: project.tasks.map(task => 
+            task.id === taskId ? { ...task, ...updatedTask } : task
+          ) 
+        } : project
+      ));
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to update task');
     }
   };
 

@@ -7,6 +7,7 @@ interface StatusCellProps {
   status: Status;
   onChange: (value: Status) => void;
   disabled?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const statusOptions = [
@@ -57,7 +58,7 @@ const statusColors = {
   clarification: "text-amber-500 dark:text-amber-400"
 } as const;
 
-export function StatusCell({ status, onChange, disabled = false }: StatusCellProps) {
+export function StatusCell({ status, onChange, disabled = false, onOpenChange }: StatusCellProps) {
   const selectedOption = statusOptions.find(option => option.value === status);
   
   return (
@@ -65,6 +66,7 @@ export function StatusCell({ status, onChange, disabled = false }: StatusCellPro
       disabled={disabled}
       value={status} 
       onValueChange={(value) => onChange(value as Status)}
+      onOpenChange={onOpenChange}
     >
       <SelectTrigger 
         className={cn("border-none min-w-24 flex items-center gap-2", statusColors[status])}

@@ -466,13 +466,96 @@ export function TaskTable() {
     await updateSubactionItem(projectId, taskId, subtaskId, actionItemId, subactionItemId, updates);
   };
 
+  // Add state variables for hours and minutes
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(0);
+  const [estHours, setEstHours] = useState<number | null>(null);
+
+  // Utility functions for time estimation
+  const convertToDecimalTime = (hours: number, minutes: number): number => {
+    return parseFloat((hours + (minutes / 60)).toFixed(2));
+  };
+
+  const isValidMinute = (minute: number): boolean => {
+    return [10, 20, 30, 40, 50].includes(minute);
+  };
+
+  const handleTimeChange = (hours: number, minutes: number, itemId: string) => {
+    if (!isValidMinute(minutes)) {
+      toast.error('Please select a valid minute value (10, 20, 30, 40, 50)');
+      return;
+    }
+
+    // Convert to decimal hours
+    const decimalHours = convertToDecimalTime(hours, minutes);
+
+    // Update the item with the decimal hours
+    updateItem(itemId, {
+      estHours: decimalHours
+    });
+
+    // Update local state
+    setEstHours(decimalHours);
+  };
+
+  const renderTimeInputs = (itemId: string) => {
+    // Convert decimal hours back to hours and minutes for display
+    const getHoursAndMinutes = (decimalHours: number): { hours: number; minutes: number } => {
+      const hours = Math.floor(decimalHours);
+      const minutes = Math.round((decimalHours - hours) * 60);
+      return { hours, minutes };
+    };
+
+    // Initialize hours and minutes from estHours
+    useEffect(() => {
+      if (estHours !== null) {
+        const { hours: h, minutes: m } = getHoursAndMinutes(estHours);
+        setHours(h);
+        setMinutes(m);
+      }
+    }, [estHours]);
+
+    return (
+      <div className="flex space-x-2">
+        <input
+          type="number"
+          placeholder="0"
+          value={hours}
+          onChange={(e) => {
+            const value = parseInt(e.target.value) || 0;
+            setHours(value);
+            // Update minutes to 0 when hours change
+            setMinutes(0);
+          }}
+          className="w-16 text-center"
+        />
+        <span className="text-center">:</span>
+        <input
+          type="number"
+          placeholder="0"
+          value={minutes}
+          onChange={(e) => {
+            const value = parseInt(e.target.value) || 0;
+            if (value >= 60) {
+              setHours(hours + 1);
+              setMinutes(0);
+            } else if (isValidMinute(value)) {
+              setMinutes(value);
+              // Update the item when minutes change
+              handleTimeChange(hours, value, itemId);
+            }
+          }}
+          className="w-16 text-center"
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="w-full overflow-x-auto px-2 pb-6">
       {selectedProject && (
         <TaskTableHeader
           projectName={selectedProject?.name || ""}
-          fontSize={fontSize}
-          adjustFontSize={adjustFontSize}
           timer={timer}
           selectedProjectId={selectedProject?.id || ""}
           onStopTimer={handleStopTimer}

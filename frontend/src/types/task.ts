@@ -114,7 +114,7 @@ export interface Task {
   taskLevel?: number;
   parentID?: number;
   estHours?: number;
-  estPrevHours?: number[];
+  estPrevHours?: number | null;
   actHours?: number;
   isExceeded?: number;
   info?: Record<string, any>;
