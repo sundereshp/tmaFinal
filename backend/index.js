@@ -185,6 +185,8 @@ app.post('/api/tasks', (req, res) => {
         priority: 'low',
         info,
         taskType: 'task',
+        dueDate: null,
+        comments: '',
         createdAt: new Date().toISOString(),
         modifiedAt: new Date().toISOString()
     };
