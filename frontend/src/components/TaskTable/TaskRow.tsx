@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Pencil, Plus, Info } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Info, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +42,7 @@ interface TaskRowProps {
   handleAddItem: (type: 'task' | 'subtask' | 'actionItem' | 'subactionItem', parentTaskId?: string, parentSubtaskId?: string, parentActionItemId?: string) => void;
   startTimer?: (projectId: string, actionItemId: string) => void;
   stopTimer?: () => void;
+  subtaskCount: number;
 }
 
 export function TaskRow({
@@ -57,7 +58,8 @@ export function TaskRow({
   handleSaveEdit,
   handleAddItem,
   startTimer,
-  stopTimer
+  stopTimer,
+  subtaskCount
 }: TaskRowProps) {
   const { deleteItem } = useTaskContext();
 
@@ -114,46 +116,62 @@ export function TaskRow({
         <div className="flex items-center w-full min-w-0">
           {/* Chevron, Task Type Dropdown, and Name */}
           <div className="flex items-center w-full">
-            <button
-              className="toggler mr-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleExpanded(selectedProjectId, task.id, 'task');
-              }}
-            >
-              {task.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center w-full min-w-0 gap-2">
+                  <button 
+                    className="toggler mr-2"
+                    onClick={() => toggleExpanded(selectedProjectId, task.id, 'task')}
+                  >
+                    {task.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </button>
 
-            <TaskTypeDropdown
-              taskType={task.taskType || 'task'}
-              status={task.status || 'todo'}
-              onTypeChange={handleTaskTypeChange}
-              onStatusChange={handleStatusChange}
-            />
+                  <div className="flex items-center w-full">
+                    {/* Status Dropdown */}
+                    <div className="mr-2">
+                      <TaskTypeDropdown
+                        taskType={task.taskType || 'task'}
+                        status={task.status || 'todo'}
+                        onTypeChange={handleTaskTypeChange}
+                        onStatusChange={handleStatusChange}
+                      />
+                    </div>
 
-            {editingItem && editingItem.id === task.id ? (
-              <Input
-                value={editingItem.name}
-                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                onBlur={handleSaveEdit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveEdit();
-                  if (e.key === 'Escape') setEditingItem(null);
-                }}
-                autoFocus
-                className="w-full"
-              />
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center justify-between w-full">
-                    <span className="truncate flex-grow">
-                      {task.name}
-                    </span>
+                    <div className="flex items-center min-w-0 flex-1">
+                      {editingItem && editingItem.id === task.id ? (
+                        <Input
+                          value={editingItem.name}
+                          onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                          onBlur={handleSaveEdit}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit();
+                            if (e.key === 'Escape') setEditingItem(null);
+                          }}
+                          autoFocus
+                          className="w-full"
+                        />
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate whitespace-nowrap overflow-hidden min-w-0 text-ellipsis">
+                              {task.name}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {task.name}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
 
-                    {!editingItem && hoveredRowId === task.id && (
-
-                      <div className="flex items-center space-x-2">
+                    {hoveredRowId === task.id && (
+                      <div className="flex items-center gap-2 ml-auto">
+                        {task.subtasks?.length > 0 && (
+                          <span className="flex items-center text-muted-foreground">
+                            <Link size={14} className="mr-1" />
+                            <span>{task.subtasks.length}</span>
+                          </span>
+                        )}
                         <DescriptionCell
                           description={task.description || ""}
                           onChange={(newDescription) => updateTask(selectedProjectId, task.id, { description: newDescription })}
@@ -174,12 +192,13 @@ export function TaskRow({
                         >
                           <Plus size={12} />
                         </Button>
+                        
                       </div>
                     )}
                   </div>
-                </TooltipTrigger>
-              </Tooltip>
-            )}
+                </div>
+              </TooltipTrigger>
+            </Tooltip>
           </div>
         </div>
       </td>

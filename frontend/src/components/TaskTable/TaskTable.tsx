@@ -653,6 +653,7 @@ export function TaskTable() {
                             updateTask={handleUpdateTask}
                             handleSaveEdit={handleSaveEdit}
                             handleAddItem={handleAddItem}
+                            subtaskCount={task.subtaskCount}
                           />
                           {task.expanded && (
                             <>
@@ -827,6 +828,7 @@ export function TaskTable() {
                                                   startTimer={handleStartTimer}
                                                   stopTimer={handleStopTimer}
                                                   parentTaskType={task.taskType || 'task'}
+                                                  toggleExpanded={toggleExpanded}
                                                 />
                                               ))}
                                             </>

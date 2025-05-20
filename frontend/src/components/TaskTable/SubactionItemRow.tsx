@@ -41,6 +41,7 @@ interface SubactionItemRowProps {
   startTimer: (projectId: string, actionItemId: string) => void;
   stopTimer: () => void;
   parentTaskType?: TaskType;
+  toggleExpanded: (projectId: string, taskId: string, subtaskId: string, actionItemId: string, subactionItemId: string) => void;
 }
 
 export function SubactionItemRow({
@@ -59,7 +60,8 @@ export function SubactionItemRow({
   handleSaveEdit,
   startTimer,
   stopTimer,
-  parentTaskType = 'task'
+  parentTaskType = 'task',
+  toggleExpanded
 }: SubactionItemRowProps) {
   const [isHovered, setIsHovered] = useState(false);
   const { deleteItem } = useTaskContext();
@@ -95,69 +97,64 @@ export function SubactionItemRow({
 
   return (
     <tr
-      className={cn("task-row group", isActiveTimer ? "bg-primary/5" : "")}
+      className={cn("task-row", isActiveTimer ? "bg-primary/5" : "")}
       onMouseEnter={() => setHoveredRowId(subactionItem.id)}
       onMouseLeave={() => setHoveredRowId(null)}
     >
       <td className="name-cell">
         <div className="flex items-center pl-16 w-full overflow-hidden">
-
-          <div className="flex-shrink-0 mr-2">
-            <TaskTypeDropdown 
-              taskType={subactionItem.taskType || 'task'} 
-              status={subactionItem.status || 'todo'} 
-              onTypeChange={handleTaskTypeChange} 
-              onStatusChange={handleStatusChange} 
-            />
-          </div>
-
-          {/* Name and buttons */}
-          <div className="flex items-center justify-between w-full gap-2 min-w-0">
-            {/* Truncating name or input */}
-            <div className="flex-1 min-w-0">
-              {editingItem && editingItem.id === subactionItem.id ? (
-                <Input
-                  value={editingItem.name}
-                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                  onBlur={handleSaveEdit}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveEdit();
-                    if (e.key === 'Escape') setEditingItem(null);
-                  }}
-                  autoFocus
-                  className="w-full"
-                />
-              ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center w-full min-w-0 gap-2">
                 <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center justify-between w-full">
-                    <span className="truncate flex-grow">
-                      {subactionItem.name}
-                    </span>
-
-                    {!editingItem && hoveredRowId === subactionItem.id && (
-
-                      <div className="flex items-center space-x-2">
-                        <DescriptionCell
-                          description={subactionItem.description || ""}
-                          onChange={(newDescription) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { description: newDescription })}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleEditName}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Pencil size={12} />
-                        </Button>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center w-full min-w-0 gap-2">
+                      {/* TaskTypeDropdown */}
+                      <div className="flex items-center w-full">
+                        <div className="flex items-center min-w-0 flex-1">
+                          {editingItem && editingItem.id === subactionItem.id ? (
+                            <Input
+                              value={editingItem.name}
+                              onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                              onBlur={handleSaveEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEdit();
+                                if (e.key === 'Escape') setEditingItem(null);
+                              }}
+                              autoFocus
+                              className="w-full"
+                            />
+                          ) : (
+                            <span className="truncate whitespace-nowrap overflow-hidden min-w-0 text-ellipsis">
+                              {subactionItem.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{subactionItem.name}</TooltipContent>
+                </Tooltip>
+
+                {hoveredRowId === subactionItem.id && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <DescriptionCell
+                      description={subactionItem.description || ""}
+                      onChange={(newDescription) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { description: newDescription })}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleEditName}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Pencil size={12} />
+                    </Button>
                   </div>
-                </TooltipTrigger>
-              </Tooltip>
-              )}
-            </div>
-          </div>
+                )}
+              </div>
+            </TooltipTrigger>
+          </Tooltip>
         </div>
       </td>
 
@@ -205,9 +202,14 @@ export function SubactionItemRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '150px', maxWidth: '150px' }}>
         <div className="truncate">
           <EstimatedTimeCell
-            estimatedTime={subactionItem.estimatedTime}
-            onChange={handleUpdateTime}
-            timeSpent={subactionItem.timeSpent}
+            estimatedTime={subactionItem.estHours || 0}
+            onChange={(decimalHours) => {
+              if (decimalHours === null) {
+                updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { estHours: null });
+              } else {
+                updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { estHours: decimalHours });
+              }
+            }}
           />
         </div>
       </td>

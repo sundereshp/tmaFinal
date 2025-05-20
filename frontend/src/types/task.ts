@@ -38,6 +38,9 @@ export interface SubactionItem {
   assignee3ID?: number;
   taskType: TaskType;
   description?: string;
+  estHours?: number;
+  estPrevHours?: number | null;
+  actHours?: number;
 }
 
 export interface ActionItem {
@@ -61,6 +64,9 @@ export interface ActionItem {
   assignee2ID?: number;
   assignee3ID?: number;
   description?: string;
+  estHours?: number;
+  estPrevHours?: number | null;
+  actHours?: number;
 }
 
 export interface Subtask {
@@ -84,6 +90,9 @@ export interface Subtask {
   assignee2ID?: number;
   assignee3ID?: number;
   description?: string;
+  estHours?: number;
+  estPrevHours?: number | null;
+  actHours?: number;
 }
 
 export type TaskType = 'task' | 'milestone' | 'forms';
@@ -119,6 +128,7 @@ export interface Task {
   isExceeded?: number;
   info?: Record<string, any>;
   comments?: string;
+  subtaskCount?: number;
 }
 
 export interface Project {

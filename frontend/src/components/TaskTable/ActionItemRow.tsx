@@ -1,4 +1,4 @@
-import { ActionItem, User, TaskType } from "@/types/task";
+import { ActionItem, User, TaskType, Status } from "@/types/task";
 import { AssigneeCell } from "./AssigneeCell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { PriorityCell } from "./PriorityCell";
 import { RowActions } from "./RowActions";
 import { StatusCell } from "./StatusCell";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronRight, Pencil, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, Link } from "lucide-react";
 import { TaskTypeDropdown } from "./TaskTypeDropdown";
 import { useState } from "react";
 import { useTaskContext } from "@/context/TaskContext";
@@ -83,12 +83,12 @@ export function ActionItemRow({
     });
   };
 
-  const handleTaskTypeChange = (type: string) => {
-    updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { taskType: type as any });
+  const handleTaskTypeChange = (type: TaskType) => {
+    updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { taskType: type });
   };
 
-  const handleStatusChange = (status: string) => {
-    updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { status: status as any });
+  const handleStatusChange = (status: Status) => {
+    updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { status });
   };
 
   const isFormsType = parentTaskType === 'forms';
@@ -101,79 +101,79 @@ export function ActionItemRow({
     >
       <td className="name-cell">
         <div className="flex items-center pl-12 w-full overflow-hidden">
-          {/* Chevron Toggle */}
-          <button
-            className="toggler flex-shrink-0 mr-2"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleExpanded(selectedProjectId, taskId, subtaskId, actionItem.id);
-            }}
-          >
-            {actionItem.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center w-full min-w-0 gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center w-full min-w-0 gap-2">
+                      {/* Chevron and TaskTypeDropdown */}
+                      <button 
+                        className="toggler mr-2"
+                        onClick={() => toggleExpanded(selectedProjectId, taskId, subtaskId, actionItem.id)}
+                      >
+                        {actionItem.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </button>
 
-          {/* Status Dropdown */}
-          <div className="mr-2">
-            <TaskTypeDropdown
-              taskType={actionItem.taskType || 'task'}
-              status={actionItem.status || 'todo'}
-              onTypeChange={handleTaskTypeChange}
-              onStatusChange={handleStatusChange}
-            />
-          </div>
-
-          {/* Name and buttons */}
-          <div className="flex-1 min-w-0">
-            {editingItem && editingItem.id === actionItem.id ? (
-              <Input
-                value={editingItem.name}
-                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                onBlur={handleSaveEdit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveEdit();
-                  if (e.key === 'Escape') setEditingItem(null);
-                }}
-                autoFocus
-                className="w-full"
-              />
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center justify-between w-full">
-                    <span className="truncate flex-grow">
-                      {actionItem.name}
-                    </span>
-
-                    {!editingItem && hoveredRowId === actionItem.id && (
-
-                      <div className="flex items-center space-x-2">
-                        <DescriptionCell
-                          description={actionItem.description || ""}
-                          onChange={(newDescription) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { description: newDescription })}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleEditName}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Pencil size={12} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleAddItem('subactionItem', taskId, subtaskId, actionItem.id)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Plus size={12} />
-                        </Button>
+                      <div className="flex items-center w-full">
+                        <div className="flex items-center min-w-0 flex-1">
+                          {editingItem && editingItem.id === actionItem.id ? (
+                            <Input
+                              value={editingItem.name}
+                              onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+                              onBlur={handleSaveEdit}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEdit();
+                                if (e.key === 'Escape') setEditingItem(null);
+                              }}
+                              autoFocus
+                              className="w-full"
+                            />
+                          ) : (
+                            <span className="truncate whitespace-nowrap overflow-hidden min-w-0 text-ellipsis">
+                              {actionItem.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{actionItem.name}</TooltipContent>
+                </Tooltip>
+
+                {hoveredRowId === actionItem.id && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {actionItem.subactionItems?.length > 0 && (
+                      <span className="flex items-center text-muted-foreground">
+                        <Link size={14} className="mr-1" />
+                        <span>{actionItem.subactionItems.length}</span>
+                      </span>
                     )}
+                    <DescriptionCell
+                      description={actionItem.description || ""}
+                      onChange={(newDescription) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { description: newDescription })}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleEditName}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Pencil size={12} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddItem('subactionItem', taskId, subtaskId, actionItem.id)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Plus size={12} />
+                    </Button>
                   </div>
-                </TooltipTrigger>
-              </Tooltip>
-            )}
-          </div>
+                )}
+              </div>
+            </TooltipTrigger>
+          </Tooltip>
         </div>
       </td>
 
@@ -222,9 +222,14 @@ export function ActionItemRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '150px', maxWidth: '150px' }}>
         <div className="truncate">
           <EstimatedTimeCell
-            estimatedTime={actionItem.estimatedTime}
-            onChange={handleUpdateTime}
-            timeSpent={actionItem.timeSpent}
+            estimatedTime={actionItem.estHours || 0}
+            onChange={(decimalHours) => {
+              if (decimalHours === null) {
+                updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { estHours: null });
+              } else {
+                updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { estHours: decimalHours });
+              }
+            }}
           />
         </div>
       </td>

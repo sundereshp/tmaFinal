@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { ActionItem, Priority, Project, Status, Subtask, Task, TimerInfo, User, SubactionItem, TaskType } from "../types/task";
 import { addDays } from "date-fns";
 import toast from 'react-hot-toast'; // Import toast
@@ -405,7 +405,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateTask = async (projectId: string, taskId: string, updates: Partial<Task>) => {
+  const updateTask = useCallback(async (projectId: string, taskId: string, updates: Partial<Task>) => {
     try {
       // Track previous estimate if changing estHours
       if (updates.estHours !== undefined) {
@@ -429,15 +429,16 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         project.id === projectId ? { 
           ...project, 
           tasks: project.tasks.map(task => 
-            task.id === taskId ? { ...task, ...updatedTask } : task
+            task.id === taskId ? { ...task, ...updatedTask, subtaskCount: task.subtaskCount } : task
           ) 
         } : project
       ));
+      toast.success('Task updated successfully');
     } catch (error) {
       console.error('Error updating task:', error);
       toast.error('Failed to update task');
     }
-  };
+  }, [selectedProject, projects]);
 
   const addSubtask = async (projectId: string, taskId: string, name: string, status: Status = 'todo') => {
     if (!name.trim()) return;
@@ -830,6 +831,17 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     if (!id) return undefined;
     return users.find(user => user.id === id);
   };
+
+  useEffect(() => {
+    const updatedTasks = projects.map(project => ({
+      ...project,
+      tasks: project.tasks.map(task => ({
+        ...task,
+        subtaskCount: project.tasks.filter(t => t.parentID === parseInt(task.id)).length
+      }))
+    }));
+    setProjects(updatedTasks);
+  }, [projects]);
 
   return (
     <TaskContext.Provider value={{
