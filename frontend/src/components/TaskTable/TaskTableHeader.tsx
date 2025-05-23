@@ -17,13 +17,15 @@ interface TaskTableHeaderProps {
   };
   selectedProjectId: string | null;
   onStopTimer: () => void;
+  totalEstimatedTime: number; // Add this prop
 }
 
 export function TaskTableHeader({
   projectName,
   timer,
   selectedProjectId,
-  onStopTimer
+  onStopTimer,
+  totalEstimatedTime
 }: TaskTableHeaderProps) {
   const [description, setDescription] = useState("");
   const [savedDescription, setSavedDescription] = useState("");
@@ -50,12 +52,20 @@ export function TaskTableHeader({
     setIsDropdownOpen(false);
     // Persist description, startDate, and endDate as needed
   };
-
+  const formatTime = (time: number) => {
+    const hours = Math.floor(time);
+    const minutes = Math.round((time - hours) * 60);
+    return `${hours}h ${minutes}m`.replace(/ 0m$/, "");
+  };
   return (
     <div className="mb-4 flex items-center justify-between sticky top-0 bg-background z-10 px-8 py-3">
       <div className="flex items-center">
         <h1 className="text-2xl font-bold mr-4">{projectName}</h1>
-
+        {totalEstimatedTime > 0 && (
+          <span className="text-muted-foreground ml-2 text-lg">
+            ({formatTime(totalEstimatedTime)})
+          </span>
+        )}
         <div className="flex items-center space-x-1 bg-muted/50 rounded-md p-1">
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <DropdownMenuTrigger asChild>
@@ -82,9 +92,9 @@ export function TaskTableHeader({
                   placeholderText="Pick a start date"
                   className="w-full border px-2 py-1 rounded text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                   calendarClassName="dark:bg-gray-800 dark:text-white"
-                  dayClassName={(date) => 
-                    startDate && date.getDate() === startDate.getDate() && date.getMonth() === startDate.getMonth() 
-                      ? 'dark:bg-blue-600 dark:text-white' 
+                  dayClassName={(date) =>
+                    startDate && date.getDate() === startDate.getDate() && date.getMonth() === startDate.getMonth()
+                      ? 'dark:bg-blue-600 dark:text-white'
                       : 'dark:text-white'
                   }
                 />
@@ -98,9 +108,9 @@ export function TaskTableHeader({
                   placeholderText="Pick an end date"
                   className="w-full border px-2 py-1 rounded text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
                   calendarClassName="dark:bg-gray-800 dark:text-white"
-                  dayClassName={(date) => 
-                    endDate && date.getDate() === endDate.getDate() && date.getMonth() === endDate.getMonth() 
-                      ? 'dark:bg-blue-600 dark:text-white' 
+                  dayClassName={(date) =>
+                    endDate && date.getDate() === endDate.getDate() && date.getMonth() === endDate.getMonth()
+                      ? 'dark:bg-blue-600 dark:text-white'
                       : 'dark:text-white'
                   }
                   minDate={startDate || undefined}

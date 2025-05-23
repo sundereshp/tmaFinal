@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTaskContext } from "../../context/TaskContext";
-import { ActionItem, Priority, Status, Subtask, SubactionItem, Task } from "@/types/task";
+import { ActionItem, Priority, Status, Subtask, SubactionItem, Task, Project } from "@/types/task";
 import { toast } from "sonner";
 import { TaskTableHeader } from "./TaskTableHeader";
 import { TableHead } from "./TableHead";
@@ -10,7 +10,6 @@ import { ActionItemRow } from "./ActionItemRow";
 import { SubactionItemRow } from "./SubactionItemRow";
 import { NewItemRow } from "./NewItemRow";
 import { TimerDialog } from "./TimerDialog";
-import { EmptyState } from "./EmptyState";
 import React from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -110,11 +109,11 @@ export function TaskTable() {
 
   const sortItems = (items: any[], key: string, dir: 'asc' | 'desc' | 'none'): any[] => {
     if (dir === 'none') return items;
-    
+
     return [...items].sort((a, b) => {
       let valA, valB;
-      
-      switch(key) {
+
+      switch (key) {
         case 'status':
           valA = statusOrder.indexOf(a.status || 'backlog');
           valB = statusOrder.indexOf(b.status || 'backlog');
@@ -189,9 +188,9 @@ export function TaskTable() {
   // Effect to update visible statuses when tasks change
   useEffect(() => {
     if (!selectedProject) return;
-    
+
     const statuses = new Set<Status>(['todo']); // Always include 'todo'
-    
+
     // Find all statuses that have at least one task
     const findAllStatuses = (items: any[]) => {
       items.forEach(item => {
@@ -203,7 +202,7 @@ export function TaskTable() {
         if (item.subactionItems) findAllStatuses(item.subactionItems);
       });
     };
-    
+
     findAllStatuses(selectedProject.tasks);
     setVisibleStatuses(statuses);
   }, [selectedProject]);
@@ -211,13 +210,13 @@ export function TaskTable() {
   // Status columns in the desired order, filtered by visible statuses and whether they have tasks
   const statusColumns = useMemo(() => {
     const allStatuses = ['backlog', 'clarification', 'todo', 'inprogress', 'review', 'complete', 'closed'];
-    
+
     // First, get all statuses that have tasks
     const statusesWithTasks = allStatuses.filter(status => {
       if (status === 'todo') return true; // Always include 'todo'
       return (groupedTasks[status] || []).length > 0;
     });
-    
+
     // Then sort them with 'todo' always first, and the rest in their original order
     return statusesWithTasks.sort((a, b) => {
       if (a === 'todo') return -1;
@@ -263,12 +262,12 @@ export function TaskTable() {
     if (type === 'subtask' && parentTaskId) {
       console.log('Expanding parent task:', parentTaskId);
       updateTask(selectedProject.id, parentTaskId, { expanded: true });
-    } 
+    }
     else if (type === 'actionItem' && parentTaskId && parentSubtaskId) {
       console.log('Expanding parent task and subtask:', parentTaskId, parentSubtaskId);
       updateTask(selectedProject.id, parentTaskId, { expanded: true });
       updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
-    } 
+    }
     else if (type === 'subactionItem' && parentTaskId && parentSubtaskId && parentActionItemId) {
       console.log('Expanding parent task, subtask, and action item:', parentTaskId, parentSubtaskId, parentActionItemId);
       updateTask(selectedProject.id, parentTaskId, { expanded: true });
@@ -290,7 +289,7 @@ export function TaskTable() {
       name: '',
       status
     };
-    
+
     console.log('Setting newItemState:', newItem);
     setNewItemState(newItem);
   };
@@ -445,10 +444,10 @@ export function TaskTable() {
 
   // Update the updateActionItem function - no need to update visibleStatuses for action items
   const handleUpdateActionItem = async (
-    projectId: string, 
-    taskId: string, 
-    subtaskId: string, 
-    actionItemId: string, 
+    projectId: string,
+    taskId: string,
+    subtaskId: string,
+    actionItemId: string,
     updates: Partial<ActionItem>
   ) => {
     await updateActionItem(projectId, taskId, subtaskId, actionItemId, updates);
@@ -456,11 +455,11 @@ export function TaskTable() {
 
   // Update the updateSubactionItem function - no need to update visibleStatuses for subaction items
   const handleUpdateSubactionItem = async (
-    projectId: string, 
-    taskId: string, 
-    subtaskId: string, 
-    actionItemId: string, 
-    subactionItemId: string, 
+    projectId: string,
+    taskId: string,
+    subtaskId: string,
+    actionItemId: string,
+    subactionItemId: string,
     updates: Partial<SubactionItem>
   ) => {
     await updateSubactionItem(projectId, taskId, subtaskId, actionItemId, subactionItemId, updates);
@@ -551,6 +550,24 @@ export function TaskTable() {
     );
   };
 
+  const calculateTotalEstimatedTime = (project: Project) => {
+    if (!project?.tasks) return 0;
+    
+    return (project.tasks || []).reduce((total, task) => {
+      const subtaskSum = (task.subtasks || []).reduce((subTotal, subtask) => {
+        const actionItemSum = (subtask.actionItems || []).reduce((actionTotal, actionItem) => {
+          const subactionSum = (actionItem.subactionItems || []).reduce(
+            (subactionTotal, subaction) => subactionTotal + (subaction?.estHours || 0),
+            0
+          );
+          return actionTotal + (actionItem?.estHours || 0) + subactionSum;
+        }, 0);
+        return subTotal + (subtask?.estHours || 0) + actionItemSum;
+      }, 0);
+      return total + (task?.estHours || 0) + subtaskSum;
+    }, 0);
+  };
+
   return (
     <div className="w-full overflow-x-auto px-2 pb-6">
       {selectedProject && (
@@ -559,9 +576,10 @@ export function TaskTable() {
           timer={timer}
           selectedProjectId={selectedProject?.id || ""}
           onStopTimer={handleStopTimer}
+          totalEstimatedTime={calculateTotalEstimatedTime(selectedProject)}
         />
       )}
-      
+
       {!selectedProject ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-center p-6 bg-background rounded-lg shadow">
@@ -578,7 +596,7 @@ export function TaskTable() {
                 <h2 className="text-lg font-semibold capitalize">
                   {statusDisplayNames[status]}
                 </h2>
-                <Button 
+                <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleAddItem('task', undefined, undefined, undefined, status as Status)}
@@ -599,7 +617,7 @@ export function TaskTable() {
                   <col style={{ width: '100px' }} />
                   <col style={{ width: '60px' }} />
                 </colgroup>
-                <TableHead 
+                <TableHead
                   onSortChange={handleSortChange}
                   sortConfig={sortConfig}
                   status={status}
@@ -630,7 +648,7 @@ export function TaskTable() {
                       </td>
                     </tr>
                   )}
-                  
+
                   {getSortedTasks(groupedTasks[status] || [], status).length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-2 py-1 text-center text-gray-500">
@@ -716,7 +734,7 @@ export function TaskTable() {
                                         newItemState.parentSubtaskId === subtask.id && (
                                           <tr key={`new-action-item-${subtask.id}`}>
                                             <td colSpan={8}>
-                                              <NewItemRow 
+                                              <NewItemRow
                                                 type="actionItem"
                                                 newItemState={newItemState}
                                                 selectedProject={selectedProject}
@@ -774,7 +792,7 @@ export function TaskTable() {
                                                 newItemState.parentActionItemId === actionItem.id && (
                                                   <tr key={`new-subaction-item-${actionItem.id}`}>
                                                     <td colSpan={8}>
-                                                      <NewItemRow 
+                                                      <NewItemRow
                                                         type="subactionItem"
                                                         newItemState={newItemState}
                                                         selectedProject={selectedProject}
