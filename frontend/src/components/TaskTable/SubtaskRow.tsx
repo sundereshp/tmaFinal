@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Subtask, User, TaskType, Status } from "@/types/task";
+import { Subtask, User, TaskType, Status, ActionItem } from "@/types/task";
 import { ChevronDown, ChevronRight, Pencil, Plus, Link } from "lucide-react";
 import { AssigneeCell } from "./AssigneeCell";
 import { CommentsCell } from "./CommentsCell";
@@ -80,7 +80,14 @@ export function SubtaskRow({
   const handleStatusChange = (status: Status) => {
     updateSubtask(selectedProjectId, taskId, subtask.id, { status });
   };
-
+  const calculateActionItemEstimates = (actionItems: ActionItem[]) => {
+    return actionItems.reduce((sum, actionItem) => {
+      const subactionSum = actionItem.subactionItems.reduce(
+        (s, sub) => s + (sub.estHours || 0), 0
+      );
+      return sum + (actionItem.estHours || 0) + subactionSum;
+    }, 0);
+  };
   return (
     <tr
       className={cn("task-row group border-b border-gray-200 dark:border-gray-700")}
@@ -220,6 +227,7 @@ export function SubtaskRow({
                 updateSubtask(selectedProjectId, taskId, subtask.id, { estHours: decimalHours });
               }
             }}
+            totalChildEstimatedTime={calculateActionItemEstimates(subtask.actionItems)}
           />
         </div>
       </td>

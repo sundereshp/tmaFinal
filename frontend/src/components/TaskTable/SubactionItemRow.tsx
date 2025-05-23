@@ -94,7 +94,7 @@ export function SubactionItemRow({
   const handleStatusChange = (status: Status) => {
     updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { status });
   };
-
+  
   return (
     <tr
       className={cn("task-row", isActiveTimer ? "bg-primary/5" : "")}
@@ -218,6 +218,7 @@ export function SubactionItemRow({
                 updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { estHours: decimalHours });
               }
             }}
+            totalChildEstimatedTime={0}
           />
         </div>
       </td>

@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Status, Task, TaskType, Priority } from "@/types/task";
+import { Status, Task, Subtask, TaskType, Priority } from "@/types/task";
 import { cn } from "@/lib/utils";
 import { StatusCell } from "./StatusCell";
 import { DueDateCell } from "./DueDateCell";
@@ -105,7 +105,17 @@ export function TaskRow({
   const handleStatusClick = () => {
     setActiveDropdown("status");
   };
-
+  const calculateSubtaskEstimates = (subtasks: Subtask[] = []) => {
+    return (subtasks || []).reduce((sum, subtask) => {
+      const actionItemsSum = (subtask.actionItems || []).reduce((acc, actionItem) => {
+        const subactionSum = (actionItem.subactionItems || []).reduce(
+          (s, sub) => s + (sub.estHours || 0), 0
+        );
+        return acc + (actionItem.estHours || 0) + subactionSum;
+      }, 0);
+      return sum + (subtask.estHours || 0) + actionItemsSum;
+    }, 0);
+  };
   return (
     <tr
       className={cn("task-row group border-b border-gray-200 dark:border-gray-700")}
@@ -281,6 +291,7 @@ export function TaskRow({
                 updateTask(selectedProjectId, task.id, { estHours: decimalHours });
               }
             }}
+            totalChildEstimatedTime={calculateSubtaskEstimates(task.subtasks)}
           />
         </div>
       </td>

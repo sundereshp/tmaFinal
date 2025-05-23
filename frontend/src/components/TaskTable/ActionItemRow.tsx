@@ -1,4 +1,4 @@
-import { ActionItem, User, TaskType, Status } from "@/types/task";
+import { ActionItem, User, TaskType, Status, SubactionItem } from "@/types/task";
 import { AssigneeCell } from "./AssigneeCell";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -92,7 +92,9 @@ export function ActionItemRow({
   };
 
   const isFormsType = parentTaskType === 'forms';
-
+  const calculateSubactionEstimates = (subactionItems: SubactionItem[]) => {
+    return subactionItems.reduce((sum, sub) => sum + (sub.estHours || 0), 0);
+  };
   return (
     <tr
       className={cn("task-row", isActiveTimer ? "bg-primary/5" : "")}
@@ -237,6 +239,7 @@ export function ActionItemRow({
                 updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { estHours: decimalHours });
               }
             }}
+            totalChildEstimatedTime={calculateSubactionEstimates(actionItem.subactionItems)}
           />
         </div>
       </td>
