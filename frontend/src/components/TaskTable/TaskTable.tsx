@@ -679,7 +679,6 @@ export function TaskTable() {
                                 newItemState.type === 'subtask' &&
                                 newItemState.parentTaskId === task.id && (
                                   <tr key={`new-subtask-${task.id}`}>
-                                    <td colSpan={8}>
                                       <NewItemRow
                                         type="subtask"
                                         newItemState={newItemState}
@@ -704,7 +703,6 @@ export function TaskTable() {
                                         }}
                                         parentTaskId={task.id}
                                       />
-                                    </td>
                                   </tr>
                                 )}
                               {task.subtasks?.map((subtask) => (
@@ -733,7 +731,6 @@ export function TaskTable() {
                                         newItemState.parentTaskId === task.id &&
                                         newItemState.parentSubtaskId === subtask.id && (
                                           <tr key={`new-action-item-${subtask.id}`}>
-                                            <td colSpan={8}>
                                               <NewItemRow
                                                 type="actionItem"
                                                 newItemState={newItemState}
@@ -758,9 +755,8 @@ export function TaskTable() {
                                                 }}
                                                 parentTaskId={task.id}
                                                 parentSubtaskId={subtask.id}
-                                              />
-                                            </td>
-                                          </tr>
+                                          />
+                                        </tr>
                                         )}
                                       {subtask.actionItems?.map((actionItem) => (
                                         <React.Fragment key={`action-item-${actionItem.id}`}>
@@ -791,7 +787,6 @@ export function TaskTable() {
                                                 newItemState.parentSubtaskId === subtask.id &&
                                                 newItemState.parentActionItemId === actionItem.id && (
                                                   <tr key={`new-subaction-item-${actionItem.id}`}>
-                                                    <td colSpan={8}>
                                                       <NewItemRow
                                                         type="subactionItem"
                                                         newItemState={newItemState}
@@ -824,7 +819,6 @@ export function TaskTable() {
                                                         parentSubtaskId={subtask.id}
                                                         parentActionItemId={actionItem.id}
                                                       />
-                                                    </td>
                                                   </tr>
                                                 )}
                                               {actionItem.subactionItems?.map((subactionItem) => (

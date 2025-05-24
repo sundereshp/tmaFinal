@@ -23,11 +23,11 @@ interface NewItemRowProps {
   toast: any;
 }
 
-export function NewItemRow({ 
-  type, 
-  name, 
-  setName, 
-  onSave, 
+export function NewItemRow({
+  type,
+  name,
+  setName,
+  onSave,
   onCancel,
   parentTaskId,
   parentSubtaskId,
@@ -44,11 +44,11 @@ export function NewItemRow({
   setNewItemState,
   toast
 }: NewItemRowProps) {
-  console.log('NewItemRow rendered with props:', { 
-    type, 
-    name, 
-    parentTaskId, 
-    parentSubtaskId, 
+  console.log('NewItemRow rendered with props:', {
+    type,
+    name,
+    parentTaskId,
+    parentSubtaskId,
     parentActionItemId,
     hasNewItemState: !!newItemState,
     hasSelectedProject: !!selectedProject
@@ -62,11 +62,11 @@ export function NewItemRow({
   }, []);
 
   useEffect(() => {
-    console.log('NewItemRow props updated', { 
-      type, 
-      name, 
-      parentTaskId, 
-      parentSubtaskId, 
+    console.log('NewItemRow props updated', {
+      type,
+      name,
+      parentTaskId,
+      parentSubtaskId,
       parentActionItemId,
       hasNewItemState: !!newItemState,
       hasSelectedProject: !!selectedProject
@@ -78,33 +78,32 @@ export function NewItemRow({
   if (type === 'actionItem') indentation = 12;
   if (type === 'subactionItem') indentation = 16;
 
-  const placeholder = `Enter new ${
-    type === 'task' ? 'task' : 
-    type === 'subtask' ? 'subtask' : 
-    type === 'actionItem' ? 'action item' : 'subaction item'
-  } name`;
+  const placeholder = `Enter new ${type === 'task' ? 'task' :
+      type === 'subtask' ? 'subtask' :
+        type === 'actionItem' ? 'action item' : 'subaction item'
+    } name`;
 
   const handleSaveNewItem = () => {
     console.log('handleSaveNewItem called with newItemState:', newItemState);
-    
+
     if (!newItemState) {
       console.error('No newItemState');
       return;
     }
-    
+
     if (!selectedProject) {
       console.error('No project selected');
       return;
     }
-    
+
     if (!newItemState.name?.trim()) {
       console.log('Empty name, not saving');
       return;
     }
-    
+
     const { type, parentTaskId, parentSubtaskId, parentActionItemId, name, fromExpand, status } = newItemState;
     console.log('Processing save for:', { type, name, status });
-    
+
     try {
       if (type === 'task') {
         console.log('Adding task with status:', status || 'todo');
@@ -149,7 +148,7 @@ export function NewItemRow({
           }
         }
       }
-      
+
       console.log('Item saved successfully, clearing newItemState');
       setNewItemState(null);
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully`);
@@ -159,8 +158,9 @@ export function NewItemRow({
     }
   };
 
+  // In NewItemRow.tsx
   return (
-    <tr className="task-row">
+    <>
       <td className="name-cell">
         <div className={`flex items-center${indentation > 0 ? ` pl-${indentation}` : ''}`}>
           <div className="toggler"></div>
@@ -179,6 +179,6 @@ export function NewItemRow({
         </div>
       </td>
       <td colSpan={7}></td>
-    </tr>
+    </>
   );
 }
