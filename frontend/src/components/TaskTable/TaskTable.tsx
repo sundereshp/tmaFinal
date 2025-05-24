@@ -252,7 +252,6 @@ export function TaskTable() {
     parentActionItemId?: string,
     status?: Status
   ) => {
-    console.log('handleAddItem called with:', { type, parentTaskId, parentSubtaskId, parentActionItemId, status });
     if (!selectedProject) {
       console.error('No project selected');
       return;
@@ -260,18 +259,12 @@ export function TaskTable() {
 
     // Auto-expand all relevant parents when adding a new item
     if (type === 'subtask' && parentTaskId) {
-      console.log('Expanding parent task:', parentTaskId);
       updateTask(selectedProject.id, parentTaskId, { expanded: true });
     }
     else if (type === 'actionItem' && parentTaskId && parentSubtaskId) {
-      console.log('Expanding parent task and subtask:', parentTaskId, parentSubtaskId);
-      updateTask(selectedProject.id, parentTaskId, { expanded: true });
       updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
     }
     else if (type === 'subactionItem' && parentTaskId && parentSubtaskId && parentActionItemId) {
-      console.log('Expanding parent task, subtask, and action item:', parentTaskId, parentSubtaskId, parentActionItemId);
-      updateTask(selectedProject.id, parentTaskId, { expanded: true });
-      updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
       updateActionItem(
         selectedProject.id,
         parentTaskId,
@@ -290,7 +283,6 @@ export function TaskTable() {
       status
     };
 
-    console.log('Setting newItemState:', newItem);
     setNewItemState(newItem);
   };
 
