@@ -1,15 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { MinusIcon, PlusIcon, Plus, MoreHorizontal } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import 'react-datepicker/dist/react-datepicker.css';
-
+import { addDays, format, parseISO } from "date-fns";
+import { useTaskContext } from "../../context/TaskContext";
+import { toast } from "sonner";
 interface TaskTableHeaderProps {
   projectName: string;
+  projectId: string;
+  projectDescription?: string;
+  projectStartDate?: string;
+  projectEndDate?: string;
+  projectEstHours?: number;
+  projectActHours?: number;
   timer: {
     isRunning: boolean;
     projectId: string | null;
@@ -17,11 +24,17 @@ interface TaskTableHeaderProps {
   };
   selectedProjectId: string | null;
   onStopTimer: () => void;
-  totalEstimatedTime: number; // Add this prop
+  totalEstimatedTime: number;
 }
 
 export function TaskTableHeader({
   projectName,
+  projectId,
+  projectDescription,
+  projectStartDate,
+  projectEndDate,
+  projectEstHours,
+  projectActHours,
   timer,
   selectedProjectId,
   onStopTimer,
@@ -34,11 +47,39 @@ export function TaskTableHeader({
   const [endDate, setEndDate] = useState<Date | null>(null);
 
   const isTimerActiveForProject = timer.isRunning && timer.projectId === selectedProjectId;
+  const { updateProject } = useTaskContext();
+  const [estHours, setEstHours] = useState(projectEstHours || 0);
+  const [actHours, setActHours] = useState(projectActHours || 0);
+
+  // In TaskTableHeader.tsx
+  useEffect(() => {
+    setDescription(projectDescription || "");
+    setSavedDescription(projectDescription || "");
+
+    // Handle both string and Date objects for dates
+    setStartDate(projectStartDate ?
+      (typeof projectStartDate === 'string' ?
+        parseISO(projectStartDate) :
+        new Date(projectStartDate)
+      ) : null
+    );
+
+    setEndDate(projectEndDate ?
+      (typeof projectEndDate === 'string' ?
+        parseISO(projectEndDate) :
+        new Date(projectEndDate)
+      ) : null
+    );
+
+    setEstHours(projectEstHours || 0);
+    setActHours(projectActHours || 0);
+  }, [projectDescription, projectStartDate, projectEndDate, projectEstHours, projectActHours]);
+
 
   const handleStartDateChange = (date: Date | null) => {
     setStartDate(date);
     if (date && endDate && date > endDate) {
-      setEndDate(null); // Reset end date if it's before the new start date
+      setEndDate(date); // Set end date to start date if it's before
     }
   };
 
@@ -47,10 +88,24 @@ export function TaskTableHeader({
     setEndDate(date);
   };
 
-  const handleSaveDescription = () => {
-    setSavedDescription(description);
-    setIsDropdownOpen(false);
-    // Persist description, startDate, and endDate as needed
+  const handleSaveDescription = async () => {
+    try {
+      await updateProject(
+        projectId,
+        projectName, // Keep the existing name
+        description,
+        startDate ? startDate.toISOString() : new Date().toISOString(),
+        endDate ? endDate.toISOString() : addDays(new Date(), 30).toISOString(),
+        estHours,
+        actHours
+      );
+      setSavedDescription(description);
+      setIsDropdownOpen(false);
+      toast.success("Project updated successfully");
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast.error("Failed to update project");
+    }
   };
   const formatTime = (time: number) => {
     const hours = Math.floor(time);

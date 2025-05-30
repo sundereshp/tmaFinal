@@ -160,7 +160,7 @@ export function NewItemRow({
 
   // In NewItemRow.tsx
   return (
-    <>
+    <tr>
       <td className="name-cell">
         <div className={`flex items-center${indentation > 0 ? ` pl-${indentation}` : ''}`}>
           <div className="toggler"></div>
@@ -179,6 +179,6 @@ export function NewItemRow({
         </div>
       </td>
       <td colSpan={7}></td>
-    </>
+    </tr>
   );
 }

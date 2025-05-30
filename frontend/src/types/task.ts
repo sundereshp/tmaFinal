@@ -160,4 +160,5 @@ export interface TimerInfo {
   startTime: Date | null;
   isRunning: boolean;
   isActive: boolean;
+  
 }
