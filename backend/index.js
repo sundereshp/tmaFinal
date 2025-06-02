@@ -6,18 +6,29 @@ const { pool, testConnection, initializeDatabase } = require('./db');
 const app = express();
 
 // Middleware
-app.use(cors());
 app.use(express.json());
+app.use(cors({
+  origin: '*', // In production, replace with your frontend URL
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Add logging middleware
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
     next();
 });
 
+// Create a router for the API with base path
+const apiRouter = express.Router();
+
+// Mount the API router at /su/backend
+app.use('/su/backend', apiRouter);
+
 // Test database connection on startup
 async function startServer(port) {
-    const server = app.listen(port)
+    // Bind to all network interfaces
+    const server = app.listen(port, '0.0.0.0')
         .on('error', async (err) => {
             if (err.code === 'EADDRINUSE') {
                 console.log(`Port ${port} is in use, trying port ${port + 1}...`);
@@ -48,12 +59,13 @@ async function startServer(port) {
     }
 }
 
-// Start the server with the port from .env or default to 3103
+// Start the server with the port from .env or default to 5000
 const PORT = process.env.PORT || 5000;
+console.log(`Starting server on port ${PORT}...`);
 startServer(parseInt(PORT));
 
 // GET all projects
-app.get('/api/projects', async (req, res) => {
+apiRouter.get('/api/projects', async (req, res) => {
     try {
         const [projects] = await pool.query('SELECT * FROM projects ORDER BY id');
         res.json(projects);
@@ -64,7 +76,7 @@ app.get('/api/projects', async (req, res) => {
 });
 
 // GET single project with its tasks
-app.get('/api/projects/:id', async (req, res) => {
+apiRouter.get('/api/projects/:id', async (req, res) => {
     try {
         const [projects] = await pool.query('SELECT * FROM projects WHERE id = ?', [req.params.id]);
         if (projects.length === 0) {
@@ -81,7 +93,7 @@ app.get('/api/projects/:id', async (req, res) => {
 });
 
 // POST create new project
-app.post('/api/projects', async (req, res) => {
+apiRouter.post('/api/projects', async (req, res) => {
     try {
         const requiredFields = ['userID', 'name', 'startDate', 'endDate', 'wsID'];
         const missing = requiredFields.filter(field => !req.body[field]);
@@ -134,33 +146,33 @@ app.post('/api/projects', async (req, res) => {
 });
 
 // PATCH update project
-app.patch('/api/projects/:id', async (req, res) => {
+apiRouter.patch('/api/projects/:id', async (req, res) => {
+    const connection = await pool.getConnection();
     try {
+        await connection.beginTransaction();
+        
         const projectId = req.params.id;
-        const allowedUpdates = ['userID', 'name', 'description', 'startDate', 'endDate', 'estHours', 'actHours', 'wsID'];
+        const updates = req.body;
+        const allowedUpdates = ['name', 'description', 'startDate', 'endDate', 'estHours', 'actHours', 'wsID'];
         
         // Build the update query
-        const updates = [];
+        const updateFields = [];
         const values = [];
         
-        for (const key of allowedUpdates) {
-            if (req.body[key] !== undefined) {
-                updates.push(`${key} = ?`);
-                // Format date fields for MySQL
-                if ((key === 'startDate' || key === 'endDate') && req.body[key]) {
-                    values.push(formatDateForMySQL(new Date(req.body[key])));
-                } else {
-                    values.push(req.body[key]);
-                }
+        for (const field of allowedUpdates) {
+            if (updates[field] !== undefined) {
+                updateFields.push(`${field} = ?`);
+                values.push(updates[field]);
             }
         }
         
-        if (updates.length === 0) {
+        if (updateFields.length === 0) {
+            await connection.rollback();
             return res.status(400).json({ error: 'No valid fields to update' });
         }
         
         // Add modifiedAt timestamp
-        updates.push('modifiedAt = ?');
+        updateFields.push('modifiedAt = ?');
         values.push(new Date());
         
         // Add projectId for WHERE clause
@@ -168,103 +180,37 @@ app.patch('/api/projects/:id', async (req, res) => {
         
         const query = `
             UPDATE projects 
-            SET ${updates.join(', ')} 
+            SET ${updateFields.join(', ')} 
             WHERE id = ?`;
             
-        const [result] = await pool.query(query, values);
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Project not found' });
-        }
-        
-        // Get the updated project
-        const [updatedProject] = await pool.query('SELECT * FROM projects WHERE id = ?', [projectId]);
-        if (updatedProject.length === 0) {
-            return res.status(404).json({ error: 'Project not found after update' });
-        }
-        
-        // Get all tasks for the project and build the hierarchy
-        const [allTasks] = await pool.query('SELECT * FROM tasks WHERE projectID = ?', [projectId]);
-        
-        // Helper function to build the task hierarchy
-        const buildTaskHierarchy = (parentId = 0, level = 1) => {
-            const tasksAtLevel = allTasks
-                .filter(task => task.parentID == parentId && task.taskLevel === level)
-                .map(task => {
-                    const taskData = {
-                        ...task,
-                        id: task.id.toString(),
-                        estPrevHours: safeJsonParse(task.estPrevHours, []),
-                        info: safeJsonParse(task.info, {}),
-                        subtasks: []
-                    };
-                    
-                    // If this is a task (level 1), add subtasks
-                    if (level === 1) {
-                        taskData.subtasks = buildTaskHierarchy(task.id, 2);
-                    } 
-                    // If this is a subtask (level 2), add action items
-                    else if (level === 2) {
-                        taskData.actionItems = buildTaskHierarchy(task.id, 3);
-                    }
-                    // If this is an action item (level 3), add subaction items
-                    else if (level === 3) {
-                        taskData.subactionItems = buildTaskHierarchy(task.id, 4);
-                    }
-                    
-                    return taskData;
-                });
-                
-            return tasksAtLevel;
-        };
-        
-        // Format the project with the hierarchical tasks
-        const project = {
-            ...updatedProject[0],
-            id: updatedProject[0].id.toString(),
-            startDate: updatedProject[0].startDate ? new Date(updatedProject[0].startDate).toISOString() : null,
-            endDate: updatedProject[0].endDate ? new Date(updatedProject[0].endDate).toISOString() : null,
-            tasks: buildTaskHierarchy()
-        };
-        
-        res.json(project);
-    } catch (error) {
-        console.error('Error updating project:', error);
-        res.status(500).json({ error: 'Failed to update project' });
-    }
-});
-
-// DELETE project
-app.delete('/api/projects/:id', async (req, res) => {
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-        const projectId = req.params.id;
-        
-        // First, delete all tasks associated with the project
-        await connection.query('DELETE FROM tasks WHERE projectID = ?', [projectId]);
-        
-        // Then delete the project
-        const [result] = await connection.query('DELETE FROM projects WHERE id = ?', [projectId]);
+        const [result] = await connection.query(query, values);
         
         if (result.affectedRows === 0) {
             await connection.rollback();
             return res.status(404).json({ error: 'Project not found' });
         }
         
+        // Get the updated project
+        const [updatedProject] = await connection.query('SELECT * FROM projects WHERE id = ?', [projectId]);
+        
         await connection.commit();
-        res.json({ success: true });
+        
+        // Return the updated project
+        res.json(updatedProject[0]);
     } catch (error) {
         await connection.rollback();
-        console.error('Error deleting project:', error);
-        res.status(500).json({ error: 'Failed to delete project' });
+        console.error('Error updating project:', error);
+        res.status(500).json({ 
+            error: 'Failed to update project',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     } finally {
         connection.release();
     }
 });
 
 // GET all tasks
-app.get('/api/tasks', async (req, res) => {
+apiRouter.get('/api/tasks', async (req, res) => {
     try {
         const [tasks] = await pool.query('SELECT * FROM tasks');
         res.json(tasks);
@@ -275,7 +221,7 @@ app.get('/api/tasks', async (req, res) => {
 });
 
 // POST create new task (including subtasks)
-app.post('/api/tasks', async (req, res) => {
+apiRouter.post('/api/tasks', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -298,6 +244,41 @@ app.post('/api/tasks', async (req, res) => {
 
         // Initialize level IDs
         let level1ID = 0, level2ID = 0, level3ID = 0, level4ID = 0;
+
+        // Handle hierarchy levels if this is not a top-level task
+        if (taskLevel > 1 && parentID) {
+            const [parentTasks] = await connection.query(
+                'SELECT id, level1ID, level2ID, level3ID, level4ID, taskLevel FROM tasks WHERE id = ?',
+                [parentID]
+            );
+
+            if (parentTasks.length === 0) {
+                await connection.rollback();
+                return res.status(400).json({ error: 'Parent task not found' });
+            }
+
+            const parent = parentTasks[0];
+            
+            // Set level IDs based on parent's level
+            level1ID = parent.level1ID || (parent.taskLevel === 1 ? parent.id : 0);
+            level2ID = parent.level2ID || (parent.taskLevel === 2 ? parent.id : 0);
+            level3ID = parent.level3ID || (parent.taskLevel === 3 ? parent.id : 0);
+            level4ID = parent.level4ID || (parent.taskLevel === 4 ? parent.id : 0);
+            
+            // For the current task level, we'll set its own ID after insertion
+            if (taskLevel === 2) level2ID = 0;
+            else if (taskLevel === 3) level3ID = 0;
+            else if (taskLevel === 4) level4ID = 0;
+        }
+        await connection.beginTransaction();
+        
+
+        // Check if project exists
+        if (projects.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
 
         // Handle hierarchy levels if this is not a top-level task
         if (taskLevel > 1 && parentID) {
@@ -417,7 +398,7 @@ app.post('/api/tasks', async (req, res) => {
 });
 
 // GET tasks for a specific project
-app.get('/api/tasks/project/:projectId', async (req, res) => {
+apiRouter.get('/api/tasks/project/:projectId', async (req, res) => {
     try {
         const projectId = req.params.projectId;
         
@@ -466,7 +447,7 @@ function formatDateForMySQL(date) {
 }
 
 // PUT update task
-app.put('/api/tasks/:id', async (req, res) => {
+apiRouter.put('/api/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -561,7 +542,7 @@ app.put('/api/tasks/:id', async (req, res) => {
 });
 
 // DELETE task
-app.delete('/api/tasks/:id', async (req, res) => {
+apiRouter.delete('/api/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
