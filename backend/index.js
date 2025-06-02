@@ -65,7 +65,7 @@ console.log(`Starting server on port ${PORT}...`);
 startServer(parseInt(PORT));
 
 // GET all projects
-apiRouter.get('/api/projects', async (req, res) => {
+apiRouter.get('/projects', async (req, res) => {
     try {
         const [projects] = await pool.query('SELECT * FROM projects ORDER BY id');
         res.json(projects);
@@ -76,7 +76,7 @@ apiRouter.get('/api/projects', async (req, res) => {
 });
 
 // GET single project with its tasks
-apiRouter.get('/api/projects/:id', async (req, res) => {
+apiRouter.get('/projects/:id', async (req, res) => {
     try {
         const [projects] = await pool.query('SELECT * FROM projects WHERE id = ?', [req.params.id]);
         if (projects.length === 0) {
@@ -93,7 +93,7 @@ apiRouter.get('/api/projects/:id', async (req, res) => {
 });
 
 // POST create new project
-apiRouter.post('/api/projects', async (req, res) => {
+apiRouter.post('/projects', async (req, res) => {
     try {
         const requiredFields = ['userID', 'name', 'startDate', 'endDate', 'wsID'];
         const missing = requiredFields.filter(field => !req.body[field]);
@@ -146,7 +146,7 @@ apiRouter.post('/api/projects', async (req, res) => {
 });
 
 // PATCH update project
-apiRouter.patch('/api/projects/:id', async (req, res) => {
+apiRouter.patch('/projects/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -210,7 +210,7 @@ apiRouter.patch('/api/projects/:id', async (req, res) => {
 });
 
 // GET all tasks
-apiRouter.get('/api/tasks', async (req, res) => {
+apiRouter.get('/tasks', async (req, res) => {
     try {
         const [tasks] = await pool.query('SELECT * FROM tasks');
         res.json(tasks);
@@ -221,7 +221,7 @@ apiRouter.get('/api/tasks', async (req, res) => {
 });
 
 // POST create new task (including subtasks)
-apiRouter.post('/api/tasks', async (req, res) => {
+apiRouter.post('/tasks', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -398,7 +398,7 @@ apiRouter.post('/api/tasks', async (req, res) => {
 });
 
 // GET tasks for a specific project
-apiRouter.get('/api/tasks/project/:projectId', async (req, res) => {
+apiRouter.get('/tasks/project/:projectId', async (req, res) => {
     try {
         const projectId = req.params.projectId;
         
@@ -447,7 +447,7 @@ function formatDateForMySQL(date) {
 }
 
 // PUT update task
-apiRouter.put('/api/tasks/:id', async (req, res) => {
+apiRouter.put('/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -542,7 +542,7 @@ apiRouter.put('/api/tasks/:id', async (req, res) => {
 });
 
 // DELETE task
-apiRouter.delete('/api/tasks/:id', async (req, res) => {
+apiRouter.delete('/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
