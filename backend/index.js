@@ -23,7 +23,7 @@ app.use((req, res, next) => {
 const apiRouter = express.Router();
 
 // Mount the API router at /su/backend
-app.use('/su/backend', apiRouter);
+app.use('/sunderesh/backend', apiRouter);
 
 // Test database connection on startup
 async function startServer(port) {
