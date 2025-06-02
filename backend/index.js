@@ -8,9 +8,10 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: '*', // In production, replace with your frontend URL
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+    origin: 'http://localhost',  // XAMPP's default URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }));
 
 // Add logging middleware
@@ -28,7 +29,7 @@ app.use('/sunderesh/backend', apiRouter);
 // Test database connection on startup
 async function startServer(port) {
     // Bind to all network interfaces
-    const server = app.listen(port, '0.0.0.0')
+    const server = app.listen(port)
         .on('error', async (err) => {
             if (err.code === 'EADDRINUSE') {
                 console.log(`Port ${port} is in use, trying port ${port + 1}...`);
@@ -49,9 +50,9 @@ async function startServer(port) {
             console.error('Failed to connect to database. Exiting...');
             process.exit(1);
         }
-        
+
         await initializeDatabase();
-        
+
     } catch (error) {
         console.error('Failed to start server:', error);
         server.close();
@@ -82,7 +83,7 @@ apiRouter.get('/projects/:id', async (req, res) => {
         if (projects.length === 0) {
             return res.status(404).json({ error: 'Project not found' });
         }
-        
+
         const [tasks] = await pool.query('SELECT * FROM tasks WHERE projectID = ?', [req.params.id]);
         const project = { ...projects[0], tasks };
         res.json(project);
@@ -106,39 +107,39 @@ apiRouter.post('/projects', async (req, res) => {
 
         const { description, userID, name, startDate, endDate, estHours = 0, actHours = 0, wsID } = req.body;
         const now = new Date();
-        
+
         // Format dates for MySQL (YYYY-MM-DD HH:MM:SS)
         const formatDateForMySQL = (date) => {
             const d = new Date(date);
             return d.toISOString().slice(0, 19).replace('T', ' ');
         };
-        
+
         const [result] = await pool.query(
             'INSERT INTO projects (userID, name, description, startDate, endDate, estHours, actHours, wsID, createdAt, modifiedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
-                userID, 
-                name, 
-                description, 
-                formatDateForMySQL(startDate), 
-                formatDateForMySQL(endDate), 
-                estHours, 
-                actHours, 
-                wsID, 
-                formatDateForMySQL(now), 
+                userID,
+                name,
+                description,
+                formatDateForMySQL(startDate),
+                formatDateForMySQL(endDate),
+                estHours,
+                actHours,
+                wsID,
+                formatDateForMySQL(now),
                 formatDateForMySQL(now)
             ]
         );
 
         // Get the newly created project
         const [newProject] = await pool.query('SELECT * FROM projects WHERE id = ?', [result.insertId]);
-        
+
         // Initialize with empty tasks array
         const response = { ...newProject[0], tasks: [] };
-        
+
         res.status(201).json(response);
     } catch (error) {
         console.error('Error creating project:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to create project',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
@@ -150,57 +151,57 @@ apiRouter.patch('/projects/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        
+
         const projectId = req.params.id;
         const updates = req.body;
         const allowedUpdates = ['name', 'description', 'startDate', 'endDate', 'estHours', 'actHours', 'wsID'];
-        
+
         // Build the update query
         const updateFields = [];
         const values = [];
-        
+
         for (const field of allowedUpdates) {
             if (updates[field] !== undefined) {
                 updateFields.push(`${field} = ?`);
                 values.push(updates[field]);
             }
         }
-        
+
         if (updateFields.length === 0) {
             await connection.rollback();
             return res.status(400).json({ error: 'No valid fields to update' });
         }
-        
+
         // Add modifiedAt timestamp
         updateFields.push('modifiedAt = ?');
         values.push(new Date());
-        
+
         // Add projectId for WHERE clause
         values.push(projectId);
-        
+
         const query = `
             UPDATE projects 
             SET ${updateFields.join(', ')} 
             WHERE id = ?`;
-            
+
         const [result] = await connection.query(query, values);
-        
+
         if (result.affectedRows === 0) {
             await connection.rollback();
             return res.status(404).json({ error: 'Project not found' });
         }
-        
+
         // Get the updated project
         const [updatedProject] = await connection.query('SELECT * FROM projects WHERE id = ?', [projectId]);
-        
+
         await connection.commit();
-        
+
         // Return the updated project
         res.json(updatedProject[0]);
     } catch (error) {
         await connection.rollback();
         console.error('Error updating project:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to update project',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
@@ -225,7 +226,7 @@ apiRouter.post('/tasks', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        
+
         const {
             description, wsID, userID, projectID, name,
             taskLevel = 1, status = 'todo', parentID = 0,
@@ -258,20 +259,20 @@ apiRouter.post('/tasks', async (req, res) => {
             }
 
             const parent = parentTasks[0];
-            
+
             // Set level IDs based on parent's level
             level1ID = parent.level1ID || (parent.taskLevel === 1 ? parent.id : 0);
             level2ID = parent.level2ID || (parent.taskLevel === 2 ? parent.id : 0);
             level3ID = parent.level3ID || (parent.taskLevel === 3 ? parent.id : 0);
             level4ID = parent.level4ID || (parent.taskLevel === 4 ? parent.id : 0);
-            
+
             // For the current task level, we'll set its own ID after insertion
             if (taskLevel === 2) level2ID = 0;
             else if (taskLevel === 3) level3ID = 0;
             else if (taskLevel === 4) level4ID = 0;
         }
         await connection.beginTransaction();
-        
+
 
         // Check if project exists
         if (projects.length === 0) {
@@ -293,13 +294,13 @@ apiRouter.post('/tasks', async (req, res) => {
             }
 
             const parent = parentTasks[0];
-            
+
             // Set level IDs based on parent's level
             level1ID = parent.level1ID || (parent.taskLevel === 1 ? parent.id : 0);
             level2ID = parent.level2ID || (parent.taskLevel === 2 ? parent.id : 0);
             level3ID = parent.level3ID || (parent.taskLevel === 3 ? parent.id : 0);
             level4ID = parent.level4ID || (parent.taskLevel === 4 ? parent.id : 0);
-            
+
             // For the current task level, we'll set its own ID after insertion
             if (taskLevel === 2) level2ID = 0;
             else if (taskLevel === 3) level3ID = 0;
@@ -358,13 +359,13 @@ apiRouter.post('/tasks', async (req, res) => {
 
         // Get the complete task with updated fields
         const [newTask] = await connection.query('SELECT * FROM tasks WHERE id = ?', [newTaskId]);
-        
+
         if (newTask.length === 0) {
             throw new Error('Failed to retrieve created task');
         }
-        
+
         await connection.commit();
-        
+
         try {
             // Parse JSON fields with proper error handling
             const responseTask = {
@@ -372,7 +373,7 @@ apiRouter.post('/tasks', async (req, res) => {
                 estPrevHours: newTask[0].estPrevHours ? JSON.parse(newTask[0].estPrevHours) : [],
                 info: newTask[0].info ? JSON.parse(newTask[0].info) : {}
             };
-            
+
             res.status(201).json(responseTask);
         } catch (parseError) {
             console.error('Error parsing task data:', parseError);
@@ -386,7 +387,7 @@ apiRouter.post('/tasks', async (req, res) => {
     } catch (error) {
         await connection.rollback();
         console.error('Error creating task:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to create task',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
@@ -401,7 +402,7 @@ apiRouter.post('/tasks', async (req, res) => {
 apiRouter.get('/tasks/project/:projectId', async (req, res) => {
     try {
         const projectId = req.params.projectId;
-        
+
         // Check if project exists
         const [projects] = await pool.query('SELECT id FROM projects WHERE id = ?', [projectId]);
         if (projects.length === 0) {
@@ -410,7 +411,7 @@ apiRouter.get('/tasks/project/:projectId', async (req, res) => {
 
         // Get all tasks for the project
         const [tasks] = await pool.query('SELECT * FROM tasks WHERE projectID = ?', [projectId]);
-        
+
         // Parse JSON fields with error handling
         const parsedTasks = tasks.map(task => {
             try {
@@ -428,11 +429,11 @@ apiRouter.get('/tasks/project/:projectId', async (req, res) => {
                 };
             }
         });
-        
+
         res.json(parsedTasks);
     } catch (error) {
         console.error('Error fetching project tasks:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Failed to fetch tasks',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
@@ -451,27 +452,27 @@ apiRouter.put('/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        
+
         const taskId = req.params.id;
         const updates = req.body;
-        
+
         // First, get the current task
         const [tasks] = await connection.query('SELECT * FROM tasks WHERE id = ?', [taskId]);
         if (tasks.length === 0) {
             await connection.rollback();
             return res.status(404).json({ error: 'Task not found' });
         }
-        
+
         const currentTask = tasks[0];
         const updateFields = [];
         const values = [];
-        
+
         // Build the update query
         const allowedUpdates = [
             'name', 'description', 'status', 'assignee1ID', 'assignee2ID', 'assignee3ID',
-            'estHours', 'actHours', 'priority', 'dueDate', 'comments', 'taskType','expanded'
+            'estHours', 'actHours', 'priority', 'dueDate', 'comments', 'taskType', 'expanded'
         ];
-        
+
         for (const field of allowedUpdates) {
             if (updates[field] !== undefined) {
                 updateFields.push(`${field} = ?`);
@@ -483,54 +484,54 @@ apiRouter.put('/tasks/:id', async (req, res) => {
                 }
             }
         }
-        
+
         // Handle estHours and estPrevHours for subtasks and their descendants
         if (updates.estHours !== undefined && currentTask.taskLevel > 1) {
             updateFields.push('estPrevHours = ?');
             values.push(JSON.stringify([currentTask.estHours]));
         }
-        
+
         if (updateFields.length === 0) {
             await connection.rollback();
             return res.status(400).json({ error: 'No valid fields to update' });
         }
-        
+
         // Add modifiedAt timestamp
         updateFields.push('modifiedAt = ?');
         values.push(new Date());
-        
+
         // Add taskId for WHERE clause
         values.push(taskId);
-        
+
         // Execute the update
         const query = `
             UPDATE tasks 
             SET ${updateFields.join(', ')}
             WHERE id = ?`;
-            
+
         await connection.query(query, values);
-        
+
         // Get the updated task
         const [updatedTasks] = await connection.query('SELECT * FROM tasks WHERE id = ?', [taskId]);
-        
+
         if (updatedTasks.length === 0) {
             await connection.rollback();
             return res.status(404).json({ error: 'Task not found after update' });
         }
-        
+
         await connection.commit();
-        
+
         // Parse JSON fields safely
         const updatedTask = {
             ...updatedTasks[0],
-            estPrevHours: typeof updatedTasks[0].estPrevHours === 'string' 
-                ? JSON.parse(updatedTasks[0].estPrevHours) 
+            estPrevHours: typeof updatedTasks[0].estPrevHours === 'string'
+                ? JSON.parse(updatedTasks[0].estPrevHours)
                 : (updatedTasks[0].estPrevHours || []),
-            info: typeof updatedTasks[0].info === 'string' 
+            info: typeof updatedTasks[0].info === 'string'
                 ? JSON.parse(updatedTasks[0].info || '{}')
                 : (updatedTasks[0].info || {})
         };
-        
+
         res.json(updatedTask);
     } catch (error) {
         await connection.rollback();
@@ -546,19 +547,19 @@ apiRouter.delete('/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-        
+
         const taskId = req.params.id;
-        
+
         // First, get the task to determine its level
         const [tasks] = await connection.query('SELECT * FROM tasks WHERE id = ?', [taskId]);
         if (tasks.length === 0) {
             await connection.rollback();
             return res.status(404).json({ error: 'Task not found' });
         }
-        
+
         const taskToDelete = tasks[0];
         const projectId = taskToDelete.projectID;
-        
+
         // Determine which level ID to match based on the deleted task's level
         const levelMap = {
             1: 'level1ID',
@@ -566,25 +567,25 @@ apiRouter.delete('/tasks/:id', async (req, res) => {
             3: 'level3ID',
             4: 'level4ID'
         };
-        
+
         const targetField = levelMap[taskToDelete.taskLevel];
         if (!targetField) {
             await connection.rollback();
             return res.status(400).json({ error: 'Invalid task level' });
         }
-        
+
         // Get all tasks in the project that are at the same or deeper level
         const [allTasks] = await connection.query('SELECT id, ' + targetField + ' FROM tasks WHERE projectID = ?', [projectId]);
-        
+
         const idsToDelete = new Set([taskId]);
-        
+
         // First pass: Get direct children
         allTasks.forEach(task => {
             if (task[targetField] == taskId) { // Using == for type coercion
                 idsToDelete.add(task.id);
             }
         });
-        
+
         // Subsequent passes: Find descendants of descendants
         let currentSize;
         do {
@@ -595,16 +596,16 @@ apiRouter.delete('/tasks/:id', async (req, res) => {
                 }
             });
         } while (currentSize !== idsToDelete.size);
-        
+
         // Convert Set to array for SQL IN clause
         const idsToDeleteArray = Array.from(idsToDelete);
-        
+
         // Delete all collected tasks
         await connection.query('DELETE FROM tasks WHERE id IN (?)', [idsToDeleteArray]);
-        
+
         await connection.commit();
-        
-        res.json({ 
+
+        res.json({
             success: true,
             deletedCount: idsToDelete.size
         });
@@ -623,17 +624,17 @@ function safeJsonParse(jsonString, defaultValue) {
     if (typeof jsonString === 'object' && jsonString !== null) {
         return jsonString;
     }
-    
+
     // If it's not a string, return the default value
     if (typeof jsonString !== 'string') {
         return defaultValue;
     }
-    
+
     // If it's an empty string, return the default value
     if (jsonString.trim() === '') {
         return defaultValue;
     }
-    
+
     try {
         const parsed = JSON.parse(jsonString);
         // If parsing succeeded but the result is null/undefined, return the default value
