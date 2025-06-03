@@ -424,21 +424,59 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   };
 
   const selectProject = (projectId: string | null) => {
+    console.log(`[Project Selection] Selected project ID: ${projectId}`);
+    if (projectId) {
+      const project = projects.find(p => p.id === projectId);
+      if (project) {
+        console.log(`[Project Selection] Selected project details:`, {
+          id: project.id,
+          name: project.name,
+          description: project.description
+        });
+      } else {
+        console.warn(`[Project Selection] Project with ID ${projectId} not found in projects list`);
+      }
+    } else {
+      console.log('[Project Selection] No project selected (projectId is null)');
+    }
     setSelectedProjectId(projectId);
   };
 
   const addTask = async (projectId: string, name: string, status: Status = 'todo', taskType: TaskType = 'task') => {
-    if (!name.trim()) return;
+    console.log('[TaskContext] addTask called with:', { 
+      projectId, 
+      name, 
+      status, 
+      taskType,
+      currentSelectedProjectId: selectedProjectId,
+      projects: projects.map(p => ({ id: p.id, name: p.name }))
+    });
+
+    // Validate project exists
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+      const errorMsg = `[TaskContext] Project with ID ${projectId} not found`;
+      console.error(errorMsg);
+      toast.error('Invalid project selected');
+      throw new Error(errorMsg);
+    }
+
+    if (!name.trim()) {
+      const errorMsg = '[TaskContext] Task name is empty';
+      console.warn(errorMsg);
+      toast.error('Task name cannot be empty');
+      throw new Error(errorMsg);
+    }
 
     const newTaskPayload = {
-      name,
+      name: name.trim(),
       wsID: 1,
       userID: 1,
-      projectID: parseInt(projectId),
+      projectID: parseInt(selectedProjectId),
       taskLevel: 1,
       status,
-      taskType: 'task', // Explicitly set default task type
-      parentID: parseInt(projectId),  // Set parentID to project ID for top-level tasks
+      taskType: taskType,
+      parentID: parseInt(selectedProjectId),
       level1ID: 0,
       level2ID: 0,
       level3ID: 0,
@@ -450,30 +488,77 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       estPrevHours: 0,
       actHours: 0,
       isExceeded: 0,
-      info: {},
-      description: ''
+      priority: 'low',
+      comments: '',
+      description: '',
+      info: {}
     };
+
+    console.log('[addTask] Sending request with payload:', newTaskPayload);
 
     try {
       const response = await fetch(api_base + '/tasks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(newTaskPayload)
       });
 
+      console.log('[addTask] Received response status:', response.status);
+      
+      const responseData = await response.text();
+      console.log('[addTask] Raw response data:', responseData);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create task');
+        let errorMessage = 'Failed to create task';
+        try {
+          const errorData = JSON.parse(responseData);
+          errorMessage = errorData.error || errorMessage;
+          console.error('[addTask] Server error:', errorData);
+        } catch (e) {
+          console.error('[addTask] Failed to parse error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
-      const createdTask = await response.json();
-      await fetchTasks(projectId);
+      const createdTask = JSON.parse(responseData);
+      console.log('[TaskContext] Task created successfully:', { 
+        task: createdTask,
+        projectId,
+        selectedProjectId,
+        isCurrentProject: projectId === selectedProjectId,
+        projectName: project.name
+      });
+      
+      // Verify the task was added to the correct project
+      if (createdTask.projectID !== projectId) {
+        console.error('[TaskContext] WARNING: Task was added to wrong project!', {
+          expectedProjectId: projectId,
+          actualProjectId: createdTask.projectID,
+          taskId: createdTask.id
+        });
+        toast.error('Error: Task was not added to the correct project');
+      }
+      
+      // Refresh the tasks list
+      console.log('[addTask] Refreshing tasks for project:', selectedProjectId);
+      await fetchTasks(selectedProjectId);
+      
       toast.success('Task created successfully');
       return createdTask;
     } catch (err) {
-      console.error('Error adding task:', err);
-      toast.error('Failed to create task');
+      const error = err as Error;
+      console.error('[addTask] Error in addTask:', {
+        error: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      toast.error('Failed to create task: ' + error.message);
       throw err;
+    } finally {
+      console.log('[addTask] Finished addTask execution');
     }
   };
 

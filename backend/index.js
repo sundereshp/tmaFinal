@@ -8,8 +8,8 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-    origin: 'http://localhost',  // XAMPP's default URL
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: ['http://localhost:8080', 'http://localhost'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
@@ -73,6 +73,37 @@ apiRouter.get('/projects', async (req, res) => {
     } catch (error) {
         console.error('Error fetching projects:', error);
         res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+});
+
+// DELETE a project and all its tasks
+apiRouter.delete('/projects/:id', async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const projectId = req.params.id;
+
+        // 1. First verify the project exists
+        const [projects] = await connection.query('SELECT * FROM projects WHERE id = ?', [projectId]);
+        if (projects.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // 2. Delete all tasks associated with this project
+        await connection.query('DELETE FROM tasks WHERE projectID = ?', [projectId]);
+        
+        // 3. Delete the project
+        await connection.query('DELETE FROM projects WHERE id = ?', [projectId]);
+        
+        await connection.commit();
+        res.status(200).json({ message: 'Project and all associated tasks deleted successfully' });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error deleting project:', error);
+        res.status(500).json({ error: 'Failed to delete project' });
+    } finally {
+        connection.release();
     }
 });
 
@@ -367,11 +398,15 @@ apiRouter.post('/tasks', async (req, res) => {
         await connection.commit();
 
         try {
-            // Parse JSON fields with proper error handling
+            // Check if fields are already objects before parsing
             const responseTask = {
                 ...newTask[0],
-                estPrevHours: newTask[0].estPrevHours ? JSON.parse(newTask[0].estPrevHours) : [],
-                info: newTask[0].info ? JSON.parse(newTask[0].info) : {}
+                estPrevHours: typeof newTask[0].estPrevHours === 'string' 
+                    ? JSON.parse(newTask[0].estPrevHours) 
+                    : (newTask[0].estPrevHours || []),
+                info: typeof newTask[0].info === 'string' 
+                    ? JSON.parse(newTask[0].info) 
+                    : (newTask[0].info || {})
             };
 
             res.status(201).json(responseTask);

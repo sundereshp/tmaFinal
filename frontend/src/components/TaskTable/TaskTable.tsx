@@ -294,25 +294,54 @@ export function TaskTable() {
   };
 
   const handleSaveNewItem = async () => {
-    if (!newItemState || !selectedProject || !newItemState.name.trim()) return;
+    console.log('[handleSaveNewItem] Starting to save new item', { newItemState, selectedProject });
+    
+    if (!newItemState) {
+      console.error('[handleSaveNewItem] No newItemState');
+      return;
+    }
+
+    if (!selectedProject) {
+      console.error('[handleSaveNewItem] No project selected');
+      toast.error('Please select a project first');
+      return;
+    }
 
     const { type, parentTaskId, parentSubtaskId, parentActionItemId, name, status } = newItemState;
+    
+    if (!name.trim()) {
+      console.warn('[handleSaveNewItem] Empty name, not saving');
+      return;
+    }
+
+    console.log('[handleSaveNewItem] Processing save for:', { 
+      type, 
+      name, 
+      status, 
+      projectId: selectedProject.id,
+      projectName: selectedProject.name
+    });
 
     try {
       if (type === 'task') {
+        console.log('[handleSaveNewItem] Adding task to project:', selectedProject.id);
         await addTask(selectedProject.id, name, status);
+        console.log('[handleSaveNewItem] Task added successfully');
       } else if (type === 'subtask' && parentTaskId) {
-        await addSubtask(selectedProject.id, parentTaskId, name);
+        console.log('[handleSaveNewItem] Adding subtask to task:', parentTaskId);
+        await addSubtask(selectedProject.id, parentTaskId, name, status);
         // Ensure parent task stays expanded
         updateTask(selectedProject.id, parentTaskId, { expanded: true });
       } else if (type === 'actionItem' && parentTaskId && parentSubtaskId) {
-        await addActionItem(selectedProject.id, parentTaskId, parentSubtaskId, name);
+        console.log('[handleSaveNewItem] Adding action item to subtask:', { parentTaskId, parentSubtaskId });
+        await addActionItem(selectedProject.id, parentTaskId, parentSubtaskId, name, status);
         // Ensure parent subtask stays expanded
         updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
         // Also ensure parent task is expanded
         updateTask(selectedProject.id, parentTaskId, { expanded: true });
       } else if (type === 'subactionItem' && parentTaskId && parentSubtaskId && parentActionItemId) {
-        await addSubactionItem(selectedProject.id, parentTaskId, parentSubtaskId, parentActionItemId, name);
+        console.log('[handleSaveNewItem] Adding subaction item to action item:', { parentTaskId, parentSubtaskId, parentActionItemId });
+        await addSubactionItem(selectedProject.id, parentTaskId, parentSubtaskId, parentActionItemId, name, status);
         // Ensure parent action item stays expanded
         updateActionItem(
           selectedProject.id,
@@ -324,12 +353,18 @@ export function TaskTable() {
         // Also ensure parent subtask and task are expanded
         updateSubtask(selectedProject.id, parentTaskId, parentSubtaskId, { expanded: true });
         updateTask(selectedProject.id, parentTaskId, { expanded: true });
+      } else {
+        console.error('[handleSaveNewItem] Invalid item type or missing parent IDs', { type, parentTaskId, parentSubtaskId, parentActionItemId });
+        toast.error('Invalid operation: Missing required parent information');
+        return;
       }
     } catch (error) {
-      console.error('Error saving item:', error);
+      console.error('[handleSaveNewItem] Error saving item:', error);
+      toast.error(`Failed to add ${type}`);
       return;
     }
 
+    console.log('[handleSaveNewItem] Clearing newItemState');
     setNewItemState(null);
   };
 
@@ -639,17 +674,7 @@ export function TaskTable() {
                   status={status}
                 />
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {/* Show NewItemRow if it matches the current status */}
-
-
-                  {getSortedTasks(groupedTasks[status] || [], status).length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-2 py-1 text-center text-gray-500">
-                        No tasks in this status.
-                      </td>
-                    </tr>
-                  ) : (
-                    <>
+                  
                       {getSortedTasks(groupedTasks[status] || [], status).map((task) => (
                         <React.Fragment key={`task-${task.id}`}>
                           <TaskRow
@@ -820,63 +845,57 @@ export function TaskTable() {
                               {newItemState &&
                                 newItemState.type === 'subtask' &&
                                 newItemState.parentTaskId === task.id && (
-                                  <tr key={`new-subtask-${task.id}`}>
-                                    <NewItemRow
-                                      type="subtask"
-                                      newItemState={newItemState}
-                                      selectedProject={selectedProject}
-                                      addTask={addTask}
-                                      addSubtask={addSubtask}
-                                      addActionItem={addActionItem}
-                                      addSubactionItem={addSubactionItem}
-                                      updateTask={updateTask}
-                                      updateSubtask={updateSubtask}
-                                      updateActionItem={updateActionItem}
-                                      setNewItemState={setNewItemState}
-                                      toast={toast}
-                                      name={newItemState.name}
-                                      setName={(name) => setNewItemState({ ...newItemState, name })}
-                                      onSave={handleSaveNewItem}
-                                      onCancel={() => {
-                                        setNewItemState(null);
-                                        if (newItemState.fromExpand) {
-                                          toggleExpanded(selectedProject?.id || '', task.id, 'task');
-                                        }
-                                      }}
-                                      parentTaskId={task.id}
-                                    />
-                                  </tr>
+                                  <NewItemRow
+                                    key={`new-subtask-${task.id}`}
+                                    type="subtask"
+                                    newItemState={newItemState}
+                                    selectedProject={selectedProject}
+                                    addTask={addTask}
+                                    addSubtask={addSubtask}
+                                    addActionItem={addActionItem}
+                                    addSubactionItem={addSubactionItem}
+                                    updateTask={updateTask}
+                                    updateSubtask={updateSubtask}
+                                    updateActionItem={updateActionItem}
+                                    setNewItemState={setNewItemState}
+                                    toast={toast}
+                                    name={newItemState.name}
+                                    setName={(name) => setNewItemState({ ...newItemState, name })}
+                                    onSave={handleSaveNewItem}
+                                    onCancel={() => {
+                                      setNewItemState(null);
+                                      if (newItemState.fromExpand) {
+                                        toggleExpanded(selectedProject?.id || '', task.id, 'task');
+                                      }
+                                    }}
+                                    parentTaskId={task.id}
+                                  />
                                 )}
                             </>
                           )}
                         </React.Fragment>
                       ))}
                       {newItemState?.type === 'task' && newItemState.status === status && (
-                        <tr>
-                          <td colSpan={8}>
-                            <NewItemRow
-                              type="task"
-                              name={newItemState.name}
-                              setName={(name) => setNewItemState({ ...newItemState, name })}
-                              onSave={handleSaveNewItem}
-                              onCancel={() => setNewItemState(null)}
-                              newItemState={newItemState}
-                              selectedProject={selectedProject}
-                              addTask={addTask}
-                              addSubtask={addSubtask}
-                              addActionItem={addActionItem}
-                              addSubactionItem={addSubactionItem}
-                              updateTask={updateTask}
-                              updateSubtask={updateSubtask}
-                              updateActionItem={updateActionItem}
-                              setNewItemState={setNewItemState}
-                              toast={toast}
-                            />
-                          </td>
-                        </tr>
+                        <NewItemRow
+                          key="new-task-row"
+                          type="task"
+                          name={newItemState.name}
+                          setName={(name) => setNewItemState({ ...newItemState, name })}
+                          onSave={handleSaveNewItem}
+                          onCancel={() => setNewItemState(null)}
+                          newItemState={newItemState}
+                          selectedProject={selectedProject}
+                          addTask={addTask}
+                          addSubtask={addSubtask}
+                          addActionItem={addActionItem}
+                          addSubactionItem={addSubactionItem}
+                          updateTask={updateTask}
+                          updateSubtask={updateSubtask}
+                          updateActionItem={updateActionItem}
+                          setNewItemState={setNewItemState}
+                          toast={toast}
+                        />
                       )}
-                    </>
-                  )}
                 </tbody>
               </table>
             </div>
