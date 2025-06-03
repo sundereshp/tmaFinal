@@ -297,45 +297,8 @@ apiRouter.post('/tasks', async (req, res) => {
             level3ID = parent.level3ID || (parent.taskLevel === 3 ? parent.id : 0);
             level4ID = parent.level4ID || (parent.taskLevel === 4 ? parent.id : 0);
 
-            // For the current task level, we'll set its own ID after insertion
-            if (taskLevel === 2) level2ID = 0;
-            else if (taskLevel === 3) level3ID = 0;
-            else if (taskLevel === 4) level4ID = 0;
-        }
-        await connection.beginTransaction();
-
-
-        // Check if project exists
-        if (projects.length === 0) {
-            await connection.rollback();
-            return res.status(404).json({ error: 'Project not found' });
-        }
-
-
-        // Handle hierarchy levels if this is not a top-level task
-        if (taskLevel > 1 && parentID) {
-            const [parentTasks] = await connection.query(
-                'SELECT id, level1ID, level2ID, level3ID, level4ID, taskLevel FROM tasks WHERE id = ?',
-                [parentID]
-            );
-
-            if (parentTasks.length === 0) {
-                await connection.rollback();
-                return res.status(400).json({ error: 'Parent task not found' });
-            }
-
-            const parent = parentTasks[0];
-
-            // Set level IDs based on parent's level
-            level1ID = parent.level1ID || (parent.taskLevel === 1 ? parent.id : 0);
-            level2ID = parent.level2ID || (parent.taskLevel === 2 ? parent.id : 0);
-            level3ID = parent.level3ID || (parent.taskLevel === 3 ? parent.id : 0);
-            level4ID = parent.level4ID || (parent.taskLevel === 4 ? parent.id : 0);
-
-            // For the current task level, we'll set its own ID after insertion
-            if (taskLevel === 2) level2ID = 0;
-            else if (taskLevel === 3) level3ID = 0;
-            else if (taskLevel === 4) level4ID = 0;
+            // Ensure parentID is set correctly based on task level
+            // No need to reset parentID as it's already set from the request
         }
 
         // Insert the new task
@@ -369,22 +332,22 @@ apiRouter.post('/tasks', async (req, res) => {
                 [newTaskId, newTaskId]
             );
         } else if (taskLevel === 2) {
-            // For subtasks, set level2ID to its own ID
+            // For subtasks, set level2ID to its own ID and ensure parentID is set to the task ID
             await connection.query(
-                'UPDATE tasks SET level2ID = ? WHERE id = ?',
-                [newTaskId, newTaskId]
+                'UPDATE tasks SET level2ID = ?, parentID = ? WHERE id = ?',
+                [newTaskId, level1ID, newTaskId]
             );
         } else if (taskLevel === 3) {
-            // For action items, set level3ID to its own ID
+            // For action items, set level3ID to its own ID and ensure parentID is set to the subtask ID
             await connection.query(
-                'UPDATE tasks SET level3ID = ? WHERE id = ?',
-                [newTaskId, newTaskId]
+                'UPDATE tasks SET level3ID = ?, parentID = ? WHERE id = ?',
+                [newTaskId, level2ID, newTaskId]
             );
         } else if (taskLevel === 4) {
-            // For sub-actions, set level4ID to its own ID
+            // For sub-actions, set level4ID to its own ID and ensure parentID is set to the action item ID
             await connection.query(
-                'UPDATE tasks SET level4ID = ? WHERE id = ?',
-                [newTaskId, newTaskId]
+                'UPDATE tasks SET level4ID = ?, parentID = ? WHERE id = ?',
+                [newTaskId, level3ID, newTaskId]
             );
         }
 
@@ -474,13 +437,6 @@ apiRouter.get('/tasks/project/:projectId', async (req, res) => {
         });
     }
 });
-
-// Helper function to format date for MySQL (YYYY-MM-DD HH:MM:SS)
-function formatDateForMySQL(date) {
-    if (!date) return null;
-    const d = new Date(date);
-    return d.toISOString().slice(0, 19).replace('T', ' ');
-}
 
 // PUT update task
 apiRouter.put('/tasks/:id', async (req, res) => {
@@ -652,6 +608,13 @@ apiRouter.delete('/tasks/:id', async (req, res) => {
         connection.release();
     }
 });
+
+// Helper function to format date for MySQL (YYYY-MM-DD HH:MM:SS)
+function formatDateForMySQL(date) {
+    if (!date) return null;
+    const d = new Date(date);
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+}
 
 // Helper function to safely parse JSON
 function safeJsonParse(jsonString, defaultValue) {
