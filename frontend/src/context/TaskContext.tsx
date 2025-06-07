@@ -485,7 +485,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       assignee2ID: 0,
       assignee3ID: 0,
       estHours: 0,
-      estPrevHours: 0,
+      estPrevHours: [],
       actHours: 0,
       isExceeded: 0,
       priority: 'low',

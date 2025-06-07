@@ -8,7 +8,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-    origin: ['http://localhost:8080', 'http://localhost','http://127.0.0.1'],
+    origin: ['http://localhost:8080', 'http://localhost', 'http://127.0.0.1'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -92,10 +92,10 @@ apiRouter.delete('/projects/:id', async (req, res) => {
 
         // 2. Delete all tasks associated with this project
         await connection.query('DELETE FROM tasks WHERE projectID = ?', [projectId]);
-        
+
         // 3. Delete the project
         await connection.query('DELETE FROM projects WHERE id = ?', [projectId]);
-        
+
         await connection.commit();
         res.status(200).json({ message: 'Project and all associated tasks deleted successfully' });
     } catch (error) {
@@ -364,11 +364,11 @@ apiRouter.post('/tasks', async (req, res) => {
             // Check if fields are already objects before parsing
             const responseTask = {
                 ...newTask[0],
-                estPrevHours: typeof newTask[0].estPrevHours === 'string' 
-                    ? JSON.parse(newTask[0].estPrevHours) 
+                estPrevHours: typeof newTask[0].estPrevHours === 'string'
+                    ? JSON.parse(newTask[0].estPrevHours)
                     : (newTask[0].estPrevHours || []),
-                info: typeof newTask[0].info === 'string' 
-                    ? JSON.parse(newTask[0].info) 
+                info: typeof newTask[0].info === 'string'
+                    ? JSON.parse(newTask[0].info)
                     : (newTask[0].info || {})
             };
 
@@ -447,21 +447,52 @@ apiRouter.put('/tasks/:id', async (req, res) => {
         const taskId = req.params.id;
         const updates = req.body;
 
-        // First, get the current task
-        const [tasks] = await connection.query('SELECT * FROM tasks WHERE id = ?', [taskId]);
-        if (tasks.length === 0) {
+        // First, fetch the current task to get the existing estHours
+        const [currentTask] = await connection.query(
+            'SELECT estHours, estPrevHours FROM tasks WHERE id = ?',
+            [taskId]
+        );
+
+        if (currentTask.length === 0) {
             await connection.rollback();
             return res.status(404).json({ error: 'Task not found' });
         }
 
-        const currentTask = tasks[0];
+        // If estHours is being updated, update the history
+        if (updates.estHours !== undefined) {
+            let history = [];
+
+            // Parse the existing history if it exists
+            if (currentTask[0].estPrevHours) {
+                try {
+                    history = typeof currentTask[0].estPrevHours === 'string'
+                        ? JSON.parse(currentTask[0].estPrevHours)
+                        : currentTask[0].estPrevHours;
+                    if (!Array.isArray(history)) {
+                        history = [history]; // Convert to array if it's a single value
+                    }
+                } catch (e) {
+                    // If parsing fails, start a new history
+                    history = [];
+                }
+            }
+
+            // Add the current estHours to the history
+            history.push({
+                value: currentTask[0].estHours,
+                timestamp: new Date().toISOString()
+            });
+
+            // Store the updated history
+            updates.estPrevHours = JSON.stringify(history);
+        }
+
+        // Proceed with the update
         const updateFields = [];
         const values = [];
-
-        // Build the update query
         const allowedUpdates = [
             'name', 'description', 'status', 'assignee1ID', 'assignee2ID', 'assignee3ID',
-            'estHours', 'actHours', 'priority', 'dueDate', 'comments', 'taskType', 'expanded'
+            'estHours', 'estPrevHours', 'actHours', 'priority', 'dueDate', 'comments', 'taskType', 'expanded'
         ];
 
         for (const field of allowedUpdates) {
