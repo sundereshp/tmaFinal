@@ -75,7 +75,14 @@ apiRouter.get('/projects', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch projects' });
     }
 });
-
+apiRouter.get('/test', async (req, res) => {
+    try {
+        res.status(200).json({ message: 'Test successful' });
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+});
 // DELETE a project and all its tasks
 apiRouter.delete('/projects/:id', async (req, res) => {
     const connection = await pool.getConnection();
@@ -400,16 +407,16 @@ apiRouter.post('/tasks', async (req, res) => {
 apiRouter.get('/tasks/project/:projectId', async (req, res) => {
     try {
         const projectId = req.params.projectId;
-
+        console.log(projectId);
         // Check if project exists
         const [projects] = await pool.query('SELECT id FROM projects WHERE id = ?', [projectId]);
         if (projects.length === 0) {
             return res.status(404).json({ error: 'Project not found' });
         }
-
+        console.log(projects);
         // Get all tasks for the project
         const [tasks] = await pool.query('SELECT * FROM tasks WHERE projectID = ?', [projectId]);
-
+        console.log(tasks);
         // Parse JSON fields with error handling
         const parsedTasks = tasks.map(task => {
             try {
@@ -447,9 +454,35 @@ apiRouter.put('/tasks/:id', async (req, res) => {
         const taskId = req.params.id;
         const updates = req.body;
 
-        // First, fetch the current task to get the existing estHours
+        // --- Handle comments field ---
+        if (updates.comments) {
+            try {
+                // Parse the comments if they're a string
+                const parsedComments = typeof updates.comments === 'string'
+                    ? JSON.parse(updates.comments)
+                    : updates.comments;
+
+                // Validate and normalize the comments structure
+                if (Array.isArray(parsedComments)) {
+                    updates.comments = JSON.stringify(parsedComments.map(comment => ({
+                        id: comment.id || Date.now().toString(),
+                        userId: comment.userId || comment.userID || 0, // Handle both field names
+                        text: comment.text || '',
+                        createdAt: comment.createdAt || new Date().toISOString()
+                    })));
+                } else {
+                    // If not an array, make it an empty array
+                    updates.comments = '[]';
+                }
+            } catch (e) {
+                console.error('Error processing comments:', e);
+                updates.comments = '[]'; // Default to empty array on error
+            }
+        }
+
+        // --- Fetch current task ---
         const [currentTask] = await connection.query(
-            'SELECT estHours, estPrevHours FROM tasks WHERE id = ?',
+            'SELECT estHours, estPrevHours, taskLevel FROM tasks WHERE id = ?',
             [taskId]
         );
 
@@ -458,59 +491,46 @@ apiRouter.put('/tasks/:id', async (req, res) => {
             return res.status(404).json({ error: 'Task not found' });
         }
 
-        // If estHours is being updated, update the history
+        // --- Handle estHours history ---
         if (updates.estHours !== undefined) {
             let history = [];
 
-            // Parse the existing history if it exists
             if (currentTask[0].estPrevHours) {
                 try {
-                    history = typeof currentTask[0].estPrevHours === 'string'
+                    const parsed = typeof currentTask[0].estPrevHours === 'string'
                         ? JSON.parse(currentTask[0].estPrevHours)
                         : currentTask[0].estPrevHours;
-                    if (!Array.isArray(history)) {
-                        history = [history]; // Convert to array if it's a single value
-                    }
+
+                    history = Array.isArray(parsed) ? parsed : [parsed];
                 } catch (e) {
-                    // If parsing fails, start a new history
                     history = [];
                 }
             }
 
-            // Add the current estHours to the history
             history.push({
                 value: currentTask[0].estHours,
                 timestamp: new Date().toISOString()
             });
 
-            // Store the updated history
             updates.estPrevHours = JSON.stringify(history);
         }
 
-        // Proceed with the update
+        // --- Prepare update fields ---
         const updateFields = [];
         const values = [];
         const allowedUpdates = [
             'name', 'description', 'status', 'assignee1ID', 'assignee2ID', 'assignee3ID',
-            'estHours', 'estPrevHours', 'actHours', 'priority', 'dueDate', 'comments', 'taskType', 'expanded'
+            'estHours', 'estPrevHours', 'actHours', 'priority', 'dueDate', 'comments',
+            'taskType', 'expanded'
         ];
 
         for (const field of allowedUpdates) {
             if (updates[field] !== undefined) {
                 updateFields.push(`${field} = ?`);
-                // Format date fields for MySQL
-                if (field === 'dueDate' && updates[field]) {
-                    values.push(formatDateForMySQL(updates[field]));
-                } else {
-                    values.push(updates[field]);
-                }
+                values.push(field === 'dueDate' && updates[field]
+                    ? formatDateForMySQL(updates[field])
+                    : updates[field]);
             }
-        }
-
-        // Handle estHours and estPrevHours for subtasks and their descendants
-        if (updates.estHours !== undefined && currentTask.taskLevel > 1) {
-            updateFields.push('estPrevHours = ?');
-            values.push(JSON.stringify([currentTask.estHours]));
         }
 
         if (updateFields.length === 0) {
@@ -518,22 +538,21 @@ apiRouter.put('/tasks/:id', async (req, res) => {
             return res.status(400).json({ error: 'No valid fields to update' });
         }
 
-        // Add modifiedAt timestamp
+        // Add modifiedAt
         updateFields.push('modifiedAt = ?');
         values.push(new Date());
 
-        // Add taskId for WHERE clause
+        // Add WHERE id
         values.push(taskId);
 
-        // Execute the update
-        const query = `
+        // Perform update
+        await connection.query(`
             UPDATE tasks 
-            SET ${updateFields.join(', ')}
-            WHERE id = ?`;
+            SET ${updateFields.join(', ')} 
+            WHERE id = ?
+        `, values);
 
-        await connection.query(query, values);
-
-        // Get the updated task
+        // Fetch updated task
         const [updatedTasks] = await connection.query('SELECT * FROM tasks WHERE id = ?', [taskId]);
 
         if (updatedTasks.length === 0) {
@@ -543,26 +562,33 @@ apiRouter.put('/tasks/:id', async (req, res) => {
 
         await connection.commit();
 
-        // Parse JSON fields safely
+        // Parse relevant JSON fields and ensure comments are properly formatted
         const updatedTask = {
             ...updatedTasks[0],
             estPrevHours: typeof updatedTasks[0].estPrevHours === 'string'
-                ? JSON.parse(updatedTasks[0].estPrevHours)
+                ? JSON.parse(updatedTasks[0].estPrevHours || '[]')
                 : (updatedTasks[0].estPrevHours || []),
             info: typeof updatedTasks[0].info === 'string'
                 ? JSON.parse(updatedTasks[0].info || '{}')
-                : (updatedTasks[0].info || {})
+                : (updatedTasks[0].info || {}),
+            comments: typeof updatedTasks[0].comments === 'string'
+                ? JSON.parse(updatedTasks[0].comments || '[]')
+                : (updatedTasks[0].comments || [])
         };
 
         res.json(updatedTask);
     } catch (error) {
         await connection.rollback();
         console.error('Error updating task:', error);
-        res.status(500).json({ error: 'Failed to update task' });
+        res.status(500).json({ 
+            error: 'Failed to update task',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     } finally {
         connection.release();
     }
 });
+
 
 // DELETE task
 apiRouter.delete('/tasks/:id', async (req, res) => {

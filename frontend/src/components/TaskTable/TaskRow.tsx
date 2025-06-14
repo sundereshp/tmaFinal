@@ -298,8 +298,19 @@ export function TaskRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
         <div className="truncate">
           <CommentsCell
-            comments={task.comments || ""} // Use task.comments, not task.description
-            onChange={(comments) => updateTask(selectedProjectId, task.id, { comments })}
+            comments={task.comments} // No need to check if array, component handles normalization
+            onChange={async (updatedComments) => {
+              try {
+                await updateTask(selectedProjectId, task.id, {
+                  comments: updatedComments // Pass the Comment[] array directly
+                });
+              } catch (error) {
+                console.error('Failed to update comments:', error);
+                // Handle error - maybe show a toast
+              }
+            }}
+            userID={1} // Make sure to pass the current user's ID
+            disabled={!selectedProjectId}
           />
         </div>
       </td>

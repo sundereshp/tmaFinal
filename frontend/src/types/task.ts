@@ -19,6 +19,13 @@ export interface TimeEstimate {
   minutes: number;
 }
 
+export interface Comment {
+  id: string;
+  userId: number; // Changed from userID to userId to match backend
+  text: string;
+  createdAt: string;
+}
+
 export interface SubactionItem {
   id: string;
   name: string;
@@ -26,7 +33,7 @@ export interface SubactionItem {
   dueDate: Date | null;
   priority: Priority;
   status: Status;
-  comments: string;
+  comments: Comment[];
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
   level1ID: number;
@@ -51,7 +58,7 @@ export interface ActionItem {
   priority: Priority;
   status: Status;
   taskType: TaskType;
-  comments: string;
+  comments: Comment[];
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
   expanded: boolean;
@@ -77,7 +84,7 @@ export interface Subtask {
   priority: Priority;
   status: Status;
   taskType: TaskType;
-  comments: string;
+  comments: Comment[];
   estimatedTime: TimeEstimate | null;
   timeSpent: number; // in minutes
   expanded: boolean;
@@ -127,7 +134,7 @@ export interface Task {
   actHours?: number;
   isExceeded?: number;
   info?: Record<string, any>;
-  comments?: string;
+  comments?: Comment[]; // Stored as JSON string in database, but contains Comment[] when parsed
   subtaskCount?: number;
 }
 
@@ -160,5 +167,4 @@ export interface TimerInfo {
   startTime: Date | null;
   isRunning: boolean;
   isActive: boolean;
-  
 }

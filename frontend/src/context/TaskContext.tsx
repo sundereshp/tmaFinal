@@ -200,12 +200,12 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateProject = async (
-    projectId: string, 
-    name: string, 
-    description: string, 
-    startDate: string, 
-    endDate: string, 
-    estHours: number, 
+    projectId: string,
+    name: string,
+    description: string,
+    startDate: string,
+    endDate: string,
+    estHours: number,
     actHours: number
   ) => {
     try {
@@ -228,13 +228,13 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       }
 
       const updatedProject = await response.json();
-      
+
       // Update the projects list with the updated project
       setProjects(prev =>
         prev.map(project => project.id === updatedProject.id ? updatedProject : project)
       );
-      
-      
+
+
       return updatedProject;
     } catch (err) {
       console.error('Error updating project:', err);
@@ -358,7 +358,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       // Function to create a task and return its new ID
       const createTask = async (task: any, parentId: string | null = null) => {
         const { id: oldId, ...taskData } = task;
-        
+
         // Prepare the task data for the new project
         const newTask = {
           ...taskData,
@@ -390,7 +390,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         // If this is a top-level task, create it with no parent
         if (task.taskLevel === 1) {
           await createTask(task);
-        } 
+        }
         // If this is a subtask, find its parent and create it with the correct parent ID
         else if (task.parentID && idMap.has(task.parentID)) {
           await createTask(task, task.parentID);
@@ -409,7 +409,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       // Select the new project
       setSelectedProjectId(newProject.id);
-      
+
       // Refresh the tasks for the new project
       await fetchTasks(newProject.id);
 
@@ -443,10 +443,10 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addTask = async (projectId: string, name: string, status: Status = 'todo', taskType: TaskType = 'task') => {
-    console.log('[TaskContext] addTask called with:', { 
-      projectId, 
-      name, 
-      status, 
+    console.log('[TaskContext] addTask called with:', {
+      projectId,
+      name,
+      status,
       taskType,
       currentSelectedProjectId: selectedProjectId,
       projects: projects.map(p => ({ id: p.id, name: p.name }))
@@ -499,7 +499,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(api_base + '/tasks', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -507,7 +507,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       });
 
       console.log('[addTask] Received response status:', response.status);
-      
+
       const responseData = await response.text();
       console.log('[addTask] Raw response data:', responseData);
 
@@ -524,14 +524,14 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       }
 
       const createdTask = JSON.parse(responseData);
-      console.log('[TaskContext] Task created successfully:', { 
+      console.log('[TaskContext] Task created successfully:', {
         task: createdTask,
         projectId,
         selectedProjectId,
         isCurrentProject: projectId === selectedProjectId,
         projectName: project.name
       });
-      
+
       // Verify the task was added to the correct project
       if (createdTask.projectID !== projectId) {
         console.error('[TaskContext] WARNING: Task was added to wrong project!', {
@@ -541,11 +541,11 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         });
         toast.error('Error: Task was not added to the correct project');
       }
-      
+
       // Refresh the tasks list
       console.log('[addTask] Refreshing tasks for project:', selectedProjectId);
       await fetchTasks(selectedProjectId);
-      
+
       toast.success('Task created successfully');
       return createdTask;
     } catch (err) {
@@ -562,38 +562,49 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // In TaskContext.tsx, update the updateTask function
+
   const updateTask = useCallback(async (projectId: string, taskId: string, updates: Partial<Task>) => {
     try {
-      // Track previous estimate if changing estHours
-      if (updates.estHours !== undefined) {
-        const currentEstimate = selectedProject?.tasks.find(t => t.id === taskId)?.estHours;
-        if (currentEstimate !== updates.estHours) {
-          updates.estPrevHours = currentEstimate || 0; // Store only the previous value
-        }
+      // If updating comments, ensure they're in the right format
+      if (updates.comments) {
+        updates.comments = updates.comments;
       }
 
-      // Update the task
-      const response = await fetch(api_base + '/tasks/' + taskId, {
+      const response = await fetch(`${api_base}/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
 
-      if (!response.ok) throw new Error('Failed to update task');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update task');
+      }
 
       const updatedTask = await response.json();
+
+      // Update the local state
       setProjects(projects.map(project =>
         project.id === projectId ? {
           ...project,
           tasks: project.tasks.map(task =>
-            task.id === taskId ? { ...task, ...updatedTask, subtaskCount: task.subtaskCount } : task
+            task.id === taskId ? {
+              ...task,
+              ...updatedTask,
+              // Keep comments as parsed array for immediate UI updates
+              comments: updatedTask.comments,
+              subtaskCount: task.subtaskCount
+            } : task
           )
         } : project
       ));
+
       toast.success('Task updated successfully');
     } catch (error) {
       console.error('Error updating task:', error);
-      toast.error('Failed to update task');
+      toast.error(error instanceof Error ? error.message : 'Failed to update task');
+      throw error; // Re-throw so the component can handle the error
     }
   }, [selectedProject, projects]);
 
