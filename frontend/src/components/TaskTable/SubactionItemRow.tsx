@@ -225,8 +225,19 @@ export function SubactionItemRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
         <div className="truncate">
           <CommentsCell
-            comments={subactionItem.comments}
-            onChange={(comments) => updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, { comments })}
+            comments={subactionItem.comments} // No need to check if array, component handles normalization
+            onChange={async (updatedComments) => {
+              try {
+                await updateSubactionItem(selectedProjectId, taskId, subtaskId, actionItemId, subactionItem.id, {
+                  comments: updatedComments // Pass the Comment[] array directly
+                });
+              } catch (error) {
+                console.error('Failed to update comments:', error);
+                // Handle error - maybe show a toast
+              }
+            }}
+            userID={1} // Make sure to pass the current user's ID
+            disabled={!selectedProjectId}
           />
         </div>
       </td>

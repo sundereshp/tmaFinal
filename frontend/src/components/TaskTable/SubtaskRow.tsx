@@ -234,8 +234,19 @@ export function SubtaskRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
         <div className="truncate">
           <CommentsCell
-            comments={subtask.comments}
-            onChange={(comments) => updateSubtask(selectedProjectId, taskId, subtask.id, { comments })}
+            comments={subtask.comments} // No need to check if array, component handles normalization
+            onChange={async (updatedComments) => {
+              try {
+                await updateSubtask(selectedProjectId, taskId, subtask.id, {
+                  comments: updatedComments // Pass the Comment[] array directly
+                });
+              } catch (error) {
+                console.error('Failed to update comments:', error);
+                // Handle error - maybe show a toast
+              }
+            }}
+            userID={1} // Make sure to pass the current user's ID
+            disabled={!selectedProjectId}
           />
         </div>
       </td>

@@ -246,8 +246,19 @@ export function ActionItemRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
         <div className="truncate">
           <CommentsCell
-            comments={actionItem.comments}
-            onChange={(comments) => updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, { comments })}
+            comments={actionItem.comments} // No need to check if array, component handles normalization
+            onChange={async (updatedComments) => {
+              try {
+                await updateActionItem(selectedProjectId, taskId, subtaskId, actionItem.id, {
+                  comments: updatedComments // Pass the Comment[] array directly
+                });
+              } catch (error) {
+                console.error('Failed to update comments:', error);
+                // Handle error - maybe show a toast
+              }
+            }}
+            userID={1} // Make sure to pass the current user's ID
+            disabled={!selectedProjectId}
           />
         </div>
       </td>
