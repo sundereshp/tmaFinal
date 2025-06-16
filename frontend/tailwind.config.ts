@@ -109,6 +109,5 @@ export default {
 				'fade-in': 'fade-in 0.3s ease-out'
 			}
 		}
-	},
-	plugins: [require("tailwindcss-animate")],
+	}
 } satisfies Config;

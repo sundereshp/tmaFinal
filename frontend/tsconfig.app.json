@@ -22,9 +22,7 @@
     "noFallthroughCasesInSwitch": false,
 
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    
   },
-  "include": ["src"]
+  "include": ["src", "types", "pages", "context", "hooks", "components/lib"]
 }
