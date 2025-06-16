@@ -4,9 +4,8 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const { pool, testConnection, initializeDatabase } = require('./db');
-
+const jwt = require('jsonwebtoken');
 const app = express();
-
 // Middleware
 app.use(express.json());
 app.use(cors({
@@ -68,13 +67,35 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: false
     }
 });
-  
+
 
 // Generate 4-digit OTP
 function generateOTP() {
     return Math.floor(1000 + Math.random() * 9000).toString();
 }
+const authenticateUser = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    console.log('Auth header:', authHeader); // Debug log
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('No or invalid auth header'); // Debug log
+        return res.status(401).json({ error: 'No token provided' });
+    }
 
+    const token = authHeader.split(' ')[1];
+    console.log('Token:', token); // Debug log
+    console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set'); // Debug log
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Decoded token:', decoded); // Debug log
+        req.user = decoded;
+        next();
+    } catch (error) {
+        console.error('Token verification failed:', error.message); // More detailed error
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+};
 // Send OTP Endpoint
 apiRouter.post('/send-otp', async (req, res) => {
     console.log('Received OTP request');
@@ -357,34 +378,51 @@ apiRouter.post('/users', async (req, res) => {
 });
 
 apiRouter.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-
     try {
+        const { email, password } = req.body;
+        
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        const [rows] = await pool.query('SELECT id, name, password FROM users WHERE email = ?', [email]);
+        // First, get the user by email
+        const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
 
-        if (rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+        if (users.length === 0) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
 
-        const user = rows[0];
-
+        const user = users[0];
+        
+        // Compare the hashed password from frontend with the one in database
         if (user.password !== password) {
-            return res.status(401).json({ error: 'Invalid email or password' });
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
         }
 
-        res.status(200).json({
-            message: 'Login successful',
-            userId: user.id,
-            name: user.name
+        // Create token with user ID
+        const token = jwt.sign(
+            { id: user.id, email: user.email, name: user.name },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
         });
 
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Server error during login',
+            details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
@@ -394,15 +432,20 @@ const PORT = process.env.PORT || 5000;
 console.log(`Starting server on port ${PORT}...`);
 startServer(PORT);
 
-apiRouter.get('/projects', async (req, res) => {
+// In your backend/index.js
+apiRouter.get('/projects', authenticateUser, async (req, res) => {
     try {
-        const [projects] = await pool.query('SELECT * FROM projects ORDER BY id');
-        res.json(projects);
+      const userId = req.user.id;
+      const [projects] = await pool.query(
+        'SELECT * FROM projects WHERE userID = ?',
+        [userId]
+      );
+      res.json(projects);
     } catch (error) {
-        console.error('Error fetching projects:', error);
-        res.status(500).json({ error: 'Failed to fetch projects' });
+      console.error('Error fetching projects:', error);
+      res.status(500).json({ error: 'Failed to fetch projects' });
     }
-});
+  });
 apiRouter.get('/test', async (req, res) => {
     try {
         res.status(200).json({ message: 'Test successful' });

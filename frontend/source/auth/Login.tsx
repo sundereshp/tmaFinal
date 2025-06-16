@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
 import ParticleBackground from './ParticleBackground';
-import {Logo} from '../../source/assets/images/Final.png'
+import Logo from "../../source/assets/images/Final.png";
 import './Login.css';
 import md5 from 'md5';
 
@@ -10,38 +10,45 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
-
+    const [error, setError] = useState('');
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
     
-        // Hash the password with MD5
-        const hashedPassword = md5(password);
-        
         try {
             const response = await fetch("http://localhost:5000/sunderesh/backend/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Accept: "application/json"
+                    "Accept": "application/json"
                 },
-                body: JSON.stringify({ email, password: hashedPassword }),
-                credentials: 'include'
+                body: JSON.stringify({
+                    email,
+                    password: md5(password)
+                })
             });
     
-            const data = await response.json();
-    
             if (!response.ok) {
-                throw new Error(data.error || "Login failed");
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Login failed');
             }
     
-            // Redirect to homepage
-            navigate("/");
-        } catch (error) {
-            console.error("Login error:", error);
-            alert(error instanceof Error ? error.message : "Login failed");
+            const data = await response.json();
+            console.log('Login API Response:', data); // Debug log
+    
+            if (data.success && data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                navigate('/dashboard'); // Changed from '/' to '/dashboard'
+            } else {
+                throw new Error(data.error || 'Login failed');
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            setError(err instanceof Error ? err.message : 'An error occurred during login');
         }
     };
-    
+
 
     const handleForgotPassword = () => {
         navigate('/forgot-password');

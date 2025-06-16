@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { ActionItem, Priority, Project, Status, Subtask, Task, TimerInfo, User, SubactionItem, TaskType } from "../types/task";
 import { addDays } from "date-fns";
 import toast from 'react-hot-toast'; // Import toast
-
+import { getCurrentUser, getAuthToken } from '../src/utils/auth'; // Make sure this is at the top
 // Sample user data
 const users: User[] = [
   { id: "1", name: "John Doe" },
@@ -62,52 +62,92 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch(api_base + '/projects');
-        if (!response.ok) throw new Error('Failed to fetch projects');
-        const fetchedProjects = await response.json();
-        setProjects(fetchedProjects);
+        const token = getAuthToken();
+        console.log('Current token:', token); // Debug log
 
-        // If no projects exist, create a default one
-        if (fetchedProjects.length === 0) {
-          const defaultProject = await addProject('Default Project', '');
-          setSelectedProjectId(defaultProject.id);
-        } else {
-          // Select the first project by default
-          setSelectedProjectId(fetchedProjects[0].id);
+        if (!token) {
+          console.error('No token found in localStorage');
+          window.location.href = '/login';
+          return;
         }
 
-        setIsLoading(false);
+        const response = await fetch('http://localhost:5000/sunderesh/backend/projects', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Response status:', response.status);
+
+        if (response.status === 401) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Auth error details:', errorData);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setProjects(data);
       } catch (err) {
-        console.error('Error fetching projects:', err);
-        setError('Failed to fetch projects');
-        setIsLoading(false);
+        console.error('Error in fetchProjects:', err);
+        toast.error('Failed to load projects. Please login again.');
       }
     };
-    fetchProjects();
   }, []);
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch(api_base + '/projects');
-        if (!response.ok) throw new Error('Failed to fetch projects');
+        const token = getAuthToken();
+        console.log('Current token:', token); // Debug log
 
-        const projects = await response.json();
-        setProjects(projects);
-
-        // If there's a selected project, fetch its tasks
-        if (selectedProjectId) {
-          fetchTasks(selectedProjectId);
+        if (!token) {
+          console.error('No token found in localStorage');
+          window.location.href = '/login';
+          return;
         }
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        setError('Failed to load projects');
-      } finally {
-        setIsLoading(false);
+
+        const response = await fetch('http://localhost:5000/sunderesh/backend/projects', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Response status:', response.status);
+
+        if (response.status === 401) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Auth error details:', errorData);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setProjects(data);
+      } catch (err) {
+        console.error('Error in fetchProjects:', err);
+        toast.error('Failed to load projects. Please login again.');
       }
     };
 
     fetchProjects();
+    fetchTasks(selectedProjectId);
   }, [selectedProjectId]);
 
   // Updated buildTaskTree function
@@ -166,36 +206,57 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
-  const addProject = async (name: string, description: string = '') => {
+
+  // In your project creation function
+  const addProject = async (name: string) => {
     try {
-      const response = await fetch(api_base + '/projects', {
+      const token = getAuthToken();
+      const user = getCurrentUser();
+
+      if (!token || !user) {
+        console.error('No token or user found');
+        return;
+      }
+
+      console.log('Creating project with:', { name, userId: user.id });
+
+      const response = await fetch('http://localhost:5000/sunderesh/backend/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          userID: 1,
+
+          userID: user.id,
           name,
-          description,
           startDate: new Date().toISOString(),
-          endDate: addDays(new Date(), 30).toISOString(),
-          wsID: 1
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          wsID: 1, // Default workspace ID if not provided
+          estHours: 0,
+          actHours: 0,
+          description: '',
+          status: 'todo'
         })
       });
 
+      console.log('Project creation response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create project');
+        console.error('Project creation failed:', errorData);
+        throw new Error(errorData.message || 'Failed to create project');
       }
 
-      const createdProject = await response.json();
-      setProjects(prev => [...prev, createdProject]);
+      const newProject = await response.json();
+      console.log('Created project:', newProject);
 
-      // Select the newly created project
-      setSelectedProjectId(createdProject.id);
-
-      return createdProject;
-    } catch (err) {
-      console.error('Error adding project:', err);
-      throw err;
+      setProjects(prev => [...prev, newProject]);
+      return newProject;
+    } catch (error) {
+      console.error('Error in addProject:', error);
+      toast.error('Failed to create project');
+      throw error;
     }
   };
 
@@ -443,6 +504,14 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addTask = async (projectId: string, name: string, status: Status = 'todo', taskType: TaskType = 'task') => {
+    const token = getAuthToken();
+    const user = getCurrentUser();
+
+    if (!token || !user) {
+      console.error('No token or user found');
+      return;
+    }
+
     console.log('[TaskContext] addTask called with:', {
       projectId,
       name,
@@ -471,7 +540,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     const newTaskPayload = {
       name: name.trim(),
       wsID: 1,
-      userID: 1,
+      userID: user.id,
       projectID: parseInt(selectedProjectId),
       taskLevel: 1,
       status,
@@ -501,6 +570,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
         },
         body: JSON.stringify(newTaskPayload)
@@ -561,7 +631,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
       console.log('[addTask] Finished addTask execution');
     }
   };
-
+  
   // In TaskContext.tsx, update the updateTask function
 
   const updateTask = useCallback(async (projectId: string, taskId: string, updates: Partial<Task>) => {
