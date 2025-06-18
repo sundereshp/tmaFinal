@@ -5,12 +5,24 @@ import ParticleBackground from './ParticleBackground';
 import Logo from "../../source/assets/images/Final.png";
 import './Login.css';
 import md5 from 'md5';
-
+import { useInvitation } from '../../hooks/useInvitation';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
     const [error, setError] = useState('');
+    const { checkInvitation } = useInvitation();
+
+    // Check for invitation token on component mount
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('token')) {
+            // Just show a message that they should log in first
+            toast.info('Please log in to accept the invitation');
+        }
+    }, []);
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -35,7 +47,15 @@ const Login = () => {
     
             const data = await response.json();
             console.log('Login API Response:', data); // Debug log
-    
+            localStorage.setItem('token', data.token);
+            
+            // After successful login, check for invitation
+            const hasPendingInvitation = await checkInvitation(true);
+            
+            if (!hasPendingInvitation) {
+                // If no invitation or already processed, navigate to dashboard
+                navigate('/dashboard');
+            }
             if (data.success && data.token) {
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));

@@ -5,6 +5,5 @@ export const getCurrentUser = () => {
 
 export const getAuthToken = (): string | null => {
     const token = localStorage.getItem('token');
-    console.log('Retrieved token from localStorage:', token); // Debug log
     return token;
 };

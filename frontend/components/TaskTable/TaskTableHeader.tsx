@@ -9,6 +9,12 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { addDays, format, parseISO } from "date-fns";
 import { useTaskContext } from "../../context/TaskContext";
 import { toast } from "sonner";
+import { UserPlus } from "lucide-react";
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
 interface TaskTableHeaderProps {
   projectName: string;
   projectId: string;
@@ -50,6 +56,12 @@ export function TaskTableHeader({
   const { updateProject } = useTaskContext();
   const [estHours, setEstHours] = useState(projectEstHours || 0);
   const [actHours, setActHours] = useState(projectActHours || 0);
+  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // In TaskTableHeader.tsx
   useEffect(() => {
@@ -74,7 +86,154 @@ export function TaskTableHeader({
     setEstHours(projectEstHours || 0);
     setActHours(projectActHours || 0);
   }, [projectDescription, projectStartDate, projectEndDate, projectEstHours, projectActHours]);
+  useEffect(() => {
+    // Set all users without filtering out the current user
+    setAvailableUsers(users);
+    if (users.length > 0) {
+      // Set the first user as selected by default
+      setSelectedUserIds([users[0].id.toString()]); // Ensure it's a string
+    }
+  }, [users]);
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://vw.aisrv.in/new_backend/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+
+      const data = await response.json();
+      console.log('Fetched users:', data); // Debug log
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setError('Failed to load users');
+      toast.error('Failed to load users');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+  // In TaskTableHeader.tsx, modify the handleSendInvitation function:
+  const handleSendInvitation = async () => {
+    if (selectedUserIds.length === 0) {
+      toast.error("Please select at least one user to invite");
+      return;
+    }
+
+    if (users.length === 0) {
+      toast.error("User list is not loaded yet. Please wait...");
+      await fetchUsers(); // Try to fetch users again
+      return;
+    }
+
+    console.log('Debug - Selected User IDs:', selectedUserIds);
+    console.log('Debug - All Users:', users);
+    // Debug log
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+
+      console.log('Debug - Selected User IDs:', selectedUserIds);
+      console.log('Debug - All Users:', users);
+      console.log('Debug - Selected User IDs Type:', typeof selectedUserIds[0]);
+      console.log('Debug - User IDs Type in users array:', users.map(u => ({
+        id: u.id,
+        type: typeof u.id,
+        email: u.email
+      })));
+
+      // Get the selected users' emails
+      const selectedUsers = users.filter(user => {
+        const isIncluded = selectedUserIds.includes(user.id);
+        console.log(`Checking user ${user.id} (${user.email}):`, isIncluded);
+        return isIncluded;
+      });
+
+      console.log('Debug - Selected Users:', selectedUsers);
+
+      if (selectedUsers.length === 0) {
+        console.error('No users matched the selected IDs. This could be due to type mismatch or missing users.');
+        throw new Error('No valid users selected. Please try refreshing the page and try again.');
+      }
+
+      const emails = selectedUsers.map(user => user.email).filter(Boolean);
+      console.log('Debug - Extracted Emails:', emails);
+
+      if (emails.length === 0) {
+        throw new Error('No valid email addresses found for selected users');
+      }
+
+      const emailString = emails.join(',');
+      console.log('Debug - Final Email String:', emailString);
+
+      const response = await fetch('https://vw.aisrv.in/new_backend/send-invitation', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          projectId,
+          projectName,
+          emails: emailString
+        })
+      });
+
+      const responseData = await response.json();
+      console.log('Response:', responseData);
+
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Failed to send invitations');
+      }
+
+      toast.success('Invitations sent successfully!');
+    } catch (error) {
+      console.error('Error sending invitations:', error);
+      toast.error(error.message || 'Failed to send invitations');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  const handleInviteUsers = async () => {
+    if (selectedUserIds.length === 0) return;
+
+    try {
+      const token = localStorage.getItem('token');
+
+      for (const userId of selectedUserIds) {
+        const response = await fetch(`https://vw.aisrv.in/new_backend/projects/${projectId}/invite`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to invite user with ID: ${userId}`);
+        }
+      }
+
+      toast.success('Users invited successfully');
+      setSelectedUserIds([]); // reset after invite
+
+    } catch (error) {
+      console.error('Error inviting users:', error);
+      toast.error('Failed to invite some users');
+    }
+  };
 
   const handleStartDateChange = (date: Date | null) => {
     setStartDate(date);
@@ -121,6 +280,7 @@ export function TaskTableHeader({
             ({formatTime(totalEstimatedTime)})
           </span>
         )}
+
         <div className="flex items-center space-x-1 bg-muted/50 rounded-md p-1">
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <DropdownMenuTrigger asChild>
@@ -195,7 +355,43 @@ export function TaskTableHeader({
           </Button>
         </div>
       )}
+      <div className="px-2 py-1.5 max-h-64 overflow-y-auto">
+        {availableUsers.map((user) => (
+          <div key={user.id} className="flex items-center space-x-2 p-2 hover:bg-gray-100">
+            <input
+              type="checkbox"
+              id={`user-${user.id}`}
+              checked={selectedUserIds.includes(user.id)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedUserIds([...selectedUserIds, user.id]);
+                } else {
+                  setSelectedUserIds(selectedUserIds.filter(id => id !== user.id));
+                }
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label
+              htmlFor={`user-${user.id}`}
+              className="ml-2 text-sm font-medium text-gray-700 cursor-pointer"
+            >
+              {user.name}
+              {/* Only show email if it exists */}
+              {user.email && ` (${user.email})`}
+            </label>
+          </div>
+        ))}
+
+        <Button
+          onClick={handleSendInvitation}
+          disabled={isLoading || selectedUserIds.length === 0}
+          className="ml-2"
+        >
+          {isLoading ? 'Sending...' : 'Send Invitation'}
+        </Button>
+      </div>
 
     </div>
+
   );
 }

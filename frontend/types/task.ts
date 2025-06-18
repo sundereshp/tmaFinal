@@ -11,6 +11,7 @@ export type Status =
 export interface User {
   id: string;
   name: string;
+  email: string;
   avatar?: string;
 }
 
@@ -156,6 +157,7 @@ export interface Project {
     subtasks: Set<string>;
     actionItems: Set<string>;
   };
+  members: number[];
 }
 
 export interface TimerInfo {

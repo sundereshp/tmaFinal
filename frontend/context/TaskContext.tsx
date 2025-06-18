@@ -5,12 +5,12 @@ import toast from 'react-hot-toast'; // Import toast
 import { getCurrentUser, getAuthToken } from '../src/utils/auth'; // Make sure this is at the top
 // Sample user data
 const users: User[] = [
-  { id: "1", name: "John Doe" },
-  { id: "2", name: "Jane Williams Smith" },
-  { id: "3", name: "Mike Johnson" },
-  { id: "4", name: "Amy Chen" },
-  { id: "5", name: "Bob Wilson" },
-  { id: "6", name: "Chris Lee" },
+  { id: "1", name: "John Doe" ,email: "john.doe@example.com"},
+  { id: "2", name: "Jane Williams Smith",email: "jane.smith@example.com" },
+  { id: "3", name: "Mike Johnson",email: "mike.johnson@example.com" },
+  { id: "4", name: "Amy Chen",email: "amy.chen@example.com" },
+  { id: "5", name: "Bob Wilson",email: "bob.wilson@example.com" },
+  { id: "6", name: "Chris Lee",email: "chris.lee@example.com" },
 ];
 
 interface TaskContextType {
@@ -58,12 +58,11 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const api_base = 'http://localhost:5000/sunderesh/backend';
+  const api_base = 'https://vw.aisrv.in/new_backend';
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const token = getAuthToken();
-        console.log('Current token:', token); // Debug log
+        const token = getAuthToken();// Debug log
 
         if (!token) {
           console.error('No token found in localStorage');
@@ -71,15 +70,13 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/sunderesh/backend/projects', {
+        const response = await fetch(api_base + '/projects', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
-
-        console.log('Response status:', response.status);
 
         if (response.status === 401) {
           const errorData = await response.json().catch(() => ({}));
@@ -101,13 +98,13 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         toast.error('Failed to load projects. Please login again.');
       }
     };
+    fetchProjects();
   }, []);
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const token = getAuthToken();
-        console.log('Current token:', token); // Debug log
+        const token = getAuthToken();// Debug log
 
         if (!token) {
           console.error('No token found in localStorage');
@@ -115,16 +112,14 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/sunderesh/backend/projects', {
+        const response = await fetch(api_base + '/projects', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
-
-        console.log('Response status:', response.status);
-
+        console.log('Response',response);
         if (response.status === 401) {
           const errorData = await response.json().catch(() => ({}));
           console.error('Auth error details:', errorData);
@@ -147,7 +142,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchProjects();
-    fetchTasks(selectedProjectId);
+    if (selectedProjectId) {
+      fetchTasks(selectedProjectId);
+    }
   }, [selectedProjectId]);
 
   // Updated buildTaskTree function
@@ -220,7 +217,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Creating project with:', { name, userId: user.id });
 
-      const response = await fetch('http://localhost:5000/sunderesh/backend/projects', {
+      const response = await fetch('https://vw.aisrv.in/new_backend/projects', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

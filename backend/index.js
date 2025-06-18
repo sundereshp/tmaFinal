@@ -3,13 +3,13 @@ const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const { pool, testConnection, initializeDatabase } = require('./db');
+const { pool, testConnection } = require('./db');
 const jwt = require('jsonwebtoken');
 const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-    origin: ['http://localhost:8080', 'http://localhost', 'http://127.0.0.1'],
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -42,16 +42,12 @@ async function startServer(port) {
             console.error('Failed to connect to database. Exiting...');
             process.exit(1);
         }
-        await initializeDatabase();
     } catch (error) {
         console.error('Failed to start server:', error);
         server.close();
         process.exit(1);
     }
 }
-// Create a router for the API with base path
-const apiRouter = express.Router();
-app.use('/sunderesh/backend', apiRouter);
 
 // Configure email transporter with Hostinger SMTP
 const transporter = nodemailer.createTransport({
@@ -68,7 +64,257 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+const generateInvitationToken = (email, projectId) => {
+    return jwt.sign(
+        { email, projectId },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '7d' } // Token expires in 7 days
+    );
+};
 
+// Send invitation email
+const sendInvitationEmail = async (email, projectName, token) => {
+    const invitationLink = `http://localhost:8080/accept-invitation?token=${token}`;
+
+    const mailOptions = {
+        from: process.env.EMAIL_USER || 'anand@aisrv.in',
+        to: email,
+        subject: `You've been invited to join ${projectName}`,
+        html: `
+        <h2>You've been invited to join ${projectName}</h2>
+        <p>Click the link below to accept the invitation:</p>
+        <a href="${invitationLink}" style="
+          display: inline-block;
+          padding: 10px 20px;
+          background-color: #4CAF50;
+          color: white;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 10px 0;
+        ">Accept Invitation</a>
+        <p>Or copy and paste this link in your browser:</p>
+        <p>${invitationLink}</p>
+      `
+    };
+
+    return transporter.sendMail(mailOptions);
+};
+// Update the accept-invitation endpoint to add user to project's members JSON
+app.get('/accept-invitation', async (req, res) => {
+    try {
+        const { token } = req.query;
+
+        if (!token) {
+            return res.status(400).send('Invalid invitation link');
+        }
+
+        // Verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const { email, projectId } = decoded;
+
+        // Check if the user exists
+        const [users] = await pool.query('SELECT id, name, email FROM users WHERE email = ?', [email]);
+
+        if (users.length === 0) {
+            // User doesn't exist, redirect to signup with invitation token
+            return res.redirect(`/signup?invite=${token}`);
+        }
+
+        const userId = users[0].id;
+        const userName = users[0].name || email.split('@')[0]; // Use name or username part of email
+
+        // Get the current project to check members
+        const [projects] = await pool.query('SELECT members FROM projects WHERE id = ?', [projectId]);
+        if (projects.length === 0) {
+            return res.status(404).send('Project not found');
+        }
+
+        // Parse the existing members JSON or initialize as empty array
+        const members = projects[0].members ? JSON.parse(projects[0].members) : [];
+
+        // Check if user is already a member
+        const isMember = members.some(member => member.id === userId);
+
+        if (!isMember) {
+            // Add user to members array
+            members.push({
+                id: userId,
+                name: userName,
+                email: email,
+                role: 'member',
+                joinedAt: new Date().toISOString()
+            });
+
+            // Update the project with new members
+            await pool.query(
+                'UPDATE projects SET members = ? WHERE id = ?',
+                [JSON.stringify(members), projectId]
+            );
+        }
+
+        // Redirect to login or directly to the project if already logged in
+        res.redirect('/login?invite_accepted=true');
+
+    } catch (error) {
+        console.error('Error processing invitation:', error);
+        if (error.name === 'TokenExpiredError') {
+            return res.status(400).send('Invitation link has expired');
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(400).send('Invalid invitation link');
+        }
+        res.status(400).send('Invalid or expired invitation link');
+    }
+});
+const checkProjectAccess = async (req, res, next) => {
+    try {
+        const userId = req.user?.id; // Assuming you have user info in req.user
+        const projectId = req.params.projectId;
+
+        const [members] = await pool.query(
+            'SELECT * FROM project_members WHERE user_id = ? AND project_id = ?',
+            [userId, projectId]
+        );
+
+        if (members.length === 0) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        req.projectRole = members[0].role; // Save role for permission checks
+        next();
+    } catch (error) {
+        console.error('Error checking project access:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+// Example protected route
+app.get('/projects/:projectId', checkProjectAccess, async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        // Your project data fetching logic here
+        res.json({ /* project data */ });
+    } catch (error) {
+        console.error('Error fetching project:', error);
+        res.status(500).json({ error: 'Failed to fetch project' });
+    }
+});
+// In your backend
+app.get('/my-projects', async (req, res) => {
+    try {
+        const userId = req.user.id; // Get from your auth middleware
+
+        const [projects] = await pool.query(`
+            SELECT p.* 
+            FROM projects p
+            JOIN project_members pm ON p.id = pm.project_id
+            WHERE pm.user_id = ?
+        `, [userId]);
+
+        res.json(projects);
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+});
+// Handle invitation endpoint
+app.post('/send-invitation', async (req, res) => {
+    try {
+        const { projectId, projectName, emails } = req.body;
+
+        if (!projectId || !projectName || !emails) {
+            console.log('Missing required fields:', { projectId, projectName, emails });
+            return res.status(400).json({
+                error: 'Missing required fields',
+                received: { projectId, projectName, emails }
+            });
+        }
+
+        const emailList = emails.split(',').map(email => email.trim());
+        console.log('Processing emails:', emailList);
+
+        // Fetch existing users from the database
+        const [existingUsers] = await pool.query(
+            'SELECT id, name, email FROM users WHERE email IN (?)',
+            [emailList]
+        );
+
+        const results = [];
+        const invitedUserIds = new Set();
+
+        // Send invitations to each email
+        for (const email of emailList) {
+            try {
+                // Check if user exists
+                const user = existingUsers.find(u => u.email === email);
+
+                // Generate token
+                const token = generateInvitationToken(email, projectId);
+
+                // Send email
+                await sendInvitationEmail(email, projectName, token);
+
+                // Track successful invites
+                if (user) {
+                    invitedUserIds.add(user.id);
+                }
+
+                results.push({ email, status: 'success' });
+            } catch (error) {
+                console.error(`Error inviting ${email}:`, error);
+                results.push({ email, status: 'failed', error: error.message });
+            }
+        }
+
+        // Update project members if we have any successful invites
+        if (invitedUserIds.size > 0) {
+            // Get current members
+            const [projects] = await pool.query(
+                'SELECT members FROM projects WHERE id = ?',
+                [projectId]
+            );
+
+            if (projects.length > 0) {
+                const currentMembers = projects[0].members
+                    ? JSON.parse(projects[0].members)
+                    : [];
+
+                // Add new members
+                existingUsers
+                    .filter(user => invitedUserIds.has(user.id))
+                    .forEach(user => {
+                        if (!currentMembers.some(m => m.id === user.id)) {
+                            currentMembers.push({
+                                id: user.id,
+                                name: user.name || user.email.split('@')[0],
+                                email: user.email,
+                                role: 'invited',
+                                invitedAt: new Date().toISOString(),
+                                status: 'pending' // can be: 'pending', 'accepted', 'declined'
+                            });
+                        }
+                    });
+
+                // Update the project
+                await pool.query(
+                    'UPDATE projects SET members = ? WHERE id = ?',
+                    [JSON.stringify(currentMembers), projectId]
+                );
+            }
+        }
+
+        res.json({
+            success: true,
+            results
+        });
+
+    } catch (error) {
+        console.error('Error in send-invitation:', error);
+        res.status(500).json({
+            error: 'Internal server error',
+            ...(process.env.NODE_ENV === 'development' && { details: error.message })
+        });
+    }
+});
 // Generate 4-digit OTP
 function generateOTP() {
     return Math.floor(1000 + Math.random() * 9000).toString();
@@ -76,7 +322,7 @@ function generateOTP() {
 const authenticateUser = (req, res, next) => {
     const authHeader = req.headers.authorization;
     console.log('Auth header:', authHeader); // Debug log
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         console.log('No or invalid auth header'); // Debug log
         return res.status(401).json({ error: 'No token provided' });
@@ -96,8 +342,20 @@ const authenticateUser = (req, res, next) => {
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 };
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+}
 // Send OTP Endpoint
-apiRouter.post('/send-otp', async (req, res) => {
+app.post('/send-otp', async (req, res) => {
     console.log('Received OTP request');
 
     try {
@@ -195,9 +453,30 @@ apiRouter.post('/send-otp', async (req, res) => {
         });
     }
 });
-
+// In backend/index.js
+app.get('/users', authenticateUser, async (req, res) => {
+    try {
+        console.log('Fetching users...');
+        const [users] = await pool.query('SELECT id, name, email FROM users');
+        console.log('Fetched users:', users);
+        if (!users) {
+            throw new Error('No users found in database');
+        }
+        res.json(users);
+    } catch (error) {
+        console.error('Error in /users endpoint:', {
+            message: error.message,
+            stack: error.stack,
+            query: 'SELECT id, name, email FROM users'
+        });
+        res.status(500).json({
+            error: 'Failed to fetch users',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
 // Verify OTP Endpoint
-apiRouter.post('/verify-otp', async (req, res) => {
+app.post('/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
 
@@ -261,7 +540,7 @@ apiRouter.post('/verify-otp', async (req, res) => {
 });
 
 // Reset Password Endpoint
-apiRouter.post('/reset-password', async (req, res) => {
+app.post('/reset-password', async (req, res) => {
     try {
         const { email, resetToken, newPassword } = req.body;
 
@@ -345,7 +624,7 @@ apiRouter.post('/reset-password', async (req, res) => {
 });
 
 // Other existing endpoints (login, signup, etc.)
-apiRouter.post('/users', async (req, res) => {
+app.post('/users', async (req, res) => {
     try {
         const { email, password, name } = req.body;
 
@@ -377,10 +656,10 @@ apiRouter.post('/users', async (req, res) => {
     }
 });
 
-apiRouter.post('/login', async (req, res) => {
+app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        
+
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
@@ -393,7 +672,7 @@ apiRouter.post('/login', async (req, res) => {
         }
 
         const user = users[0];
-        
+
         // Compare the hashed password from frontend with the one in database
         if (user.password !== password) {
             return res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -418,7 +697,7 @@ apiRouter.post('/login', async (req, res) => {
 
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
             error: 'Server error during login',
             details: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -433,20 +712,70 @@ console.log(`Starting server on port ${PORT}...`);
 startServer(PORT);
 
 // In your backend/index.js
-apiRouter.get('/projects', authenticateUser, async (req, res) => {
+app.get('/projects', authenticateUser, async (req, res) => {
     try {
-      const userId = req.user.id;
-      const [projects] = await pool.query(
-        'SELECT * FROM projects WHERE userID = ?',
-        [userId]
-      );
-      res.json(projects);
+        const userId = req.user.id;
+        console.log('User ID:', userId);
+        console.log('Fetching projects for user ID:', userId);
+
+        // Get projects where user is the creator
+        const [createdProjects] = await pool.query(
+            'SELECT * FROM projects WHERE userID = ?',
+            [userId]
+        );
+        console.log('Created projects count:', createdProjects.length);
+
+        // Get projects where user is a member via JSON array
+        const [sharedProjects] = await pool.query(
+            `
+            SELECT * FROM projects 
+            WHERE JSON_CONTAINS(members, JSON_OBJECT('id', ?), '$')
+            `,
+            [userId]
+        );
+        console.log('Shared projects:', sharedProjects);
+        console.log('Shared projects count:', sharedProjects.length);
+
+        // Combine and deduplicate projects
+        const projectMap = new Map();
+                // Add created projects
+        createdProjects.forEach(project => {
+            projectMap.set(project.id, {
+                ...project,
+                isOwner: true,
+                members: project.members   
+            });
+        });
+
+        // Add shared projects
+        sharedProjects.forEach(project => {
+            if (!projectMap.has(project.id)) {
+                projectMap.set(project.id, {
+                    ...project,
+                    isOwner: false,
+                    members: project.members
+                });
+            }
+        });
+
+        const allProjects = Array.from(projectMap.values());
+        console.log('Final projects count:', allProjects.length);
+
+        res.json(allProjects);
+
     } catch (error) {
-      console.error('Error fetching projects:', error);
-      res.status(500).json({ error: 'Failed to fetch projects' });
+        console.error('Error in /projects endpoint:', {
+            message: error.message,
+            stack: error.stack,
+            userId: req.user?.id
+        });
+        res.status(500).json({
+            error: 'Failed to fetch projects',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
-  });
-apiRouter.get('/test', async (req, res) => {
+});
+app.get('/test', async (req, res) => {
     try {
         res.status(200).json({ message: 'Test successful' });
     } catch (error) {
@@ -455,7 +784,7 @@ apiRouter.get('/test', async (req, res) => {
     }
 });
 // DELETE a project and all its tasks
-apiRouter.delete('/projects/:id', async (req, res) => {
+app.delete('/projects/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -486,7 +815,7 @@ apiRouter.delete('/projects/:id', async (req, res) => {
 });
 
 // GET single project with its tasks
-apiRouter.get('/projects/:id', async (req, res) => {
+app.get('/projects/:id', async (req, res) => {
     try {
         const [projects] = await pool.query('SELECT * FROM projects WHERE id = ?', [req.params.id]);
         if (projects.length === 0) {
@@ -503,7 +832,7 @@ apiRouter.get('/projects/:id', async (req, res) => {
 });
 
 // POST create new project
-apiRouter.post('/projects', async (req, res) => {
+app.post('/projects', async (req, res) => {
     try {
         const requiredFields = ['userID', 'name', 'startDate', 'endDate', 'wsID'];
         const missing = requiredFields.filter(field => !req.body[field]);
@@ -556,7 +885,7 @@ apiRouter.post('/projects', async (req, res) => {
 });
 
 // PATCH update project
-apiRouter.patch('/projects/:id', async (req, res) => {
+app.patch('/projects/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -620,7 +949,7 @@ apiRouter.patch('/projects/:id', async (req, res) => {
 });
 
 // GET all tasks
-apiRouter.get('/tasks', async (req, res) => {
+app.get('/tasks', async (req, res) => {
     try {
         const [tasks] = await pool.query('SELECT * FROM tasks');
         res.json(tasks);
@@ -631,7 +960,7 @@ apiRouter.get('/tasks', async (req, res) => {
 });
 
 // POST create new task (including subtasks)
-apiRouter.post('/tasks', async (req, res) => {
+app.post('/tasks', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -775,7 +1104,7 @@ apiRouter.post('/tasks', async (req, res) => {
 });
 
 // GET tasks for a specific project
-apiRouter.get('/tasks/project/:projectId', async (req, res) => {
+app.get('/tasks/project/:projectId', async (req, res) => {
     try {
         const projectId = req.params.projectId;
         console.log(projectId);
@@ -817,7 +1146,7 @@ apiRouter.get('/tasks/project/:projectId', async (req, res) => {
 });
 
 // PUT update task
-apiRouter.put('/tasks/:id', async (req, res) => {
+app.put('/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -962,7 +1291,7 @@ apiRouter.put('/tasks/:id', async (req, res) => {
 
 
 // DELETE task
-apiRouter.delete('/tasks/:id', async (req, res) => {
+app.delete('/tasks/:id', async (req, res) => {
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
