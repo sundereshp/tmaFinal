@@ -90,7 +90,7 @@ export default function ForgotPassword() {
       setError("");
       setSuccess("");
 
-      const response = await fetch('http://localhost:5000/sunderesh/backend/send-otp', {
+      const response = await fetch('https://vw.aisrv.in/new_backend/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -172,7 +172,7 @@ export default function ForgotPassword() {
       setLoading(true);
       setError("");
 
-      const response = await fetch('http://localhost:5000/sunderesh/backend/verify-otp', {
+      const response = await fetch('https://vw.aisrv.in/new_backend/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp: otpString }),
@@ -217,7 +217,7 @@ export default function ForgotPassword() {
       setLoading(true);
       setError("");
 
-      const response = await fetch('http://localhost:5000/sunderesh/backend/reset-password', {
+      const response = await fetch('https://vw.aisrv.in/new_backend/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -255,7 +255,7 @@ export default function ForgotPassword() {
       setError("");
       setOtp(["", "", "", ""]);
 
-      const response = await fetch('http://localhost:5000/sunderesh/backend/send-otp', {
+      const response = await fetch('https://vw.aisrv.in/new_backend/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
