@@ -40,7 +40,7 @@ export function Layout() {
                       console.log('Logout clicked');
                       localStorage.removeItem('token');
                       localStorage.removeItem('user');
-                      window.location.href = '/login';
+                      window.location.href = '/new_backend/login';
                     }}
                   >
                     Logout

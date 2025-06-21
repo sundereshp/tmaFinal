@@ -1,7 +1,7 @@
 import { cn } from "../lib/utils";
 import { Priority } from "../../types/task";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-
+import React from "react";
 interface PriorityCellProps {
   priority: Priority;
   onChange: (value: Priority) => void;

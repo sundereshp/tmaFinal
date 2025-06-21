@@ -28,7 +28,7 @@ const Login = () => {
         setError('');
     
         try {
-            const response = await fetch("http://vw.aisrv.in/login", {
+            const response = await fetch("http://vw.aisrv.in/new_backend/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
