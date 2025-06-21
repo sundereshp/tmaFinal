@@ -129,7 +129,7 @@ export function TaskTableHeader({
     setError(null);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://vw.aisrv.in/users', {
+      const response = await fetch('https://vw.aisrv.in/new_backend/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -188,7 +188,7 @@ export function TaskTableHeader({
 
       const emailString = emails.join(',');
 
-      const response = await fetch('http://vw.aisrv.in/send-invitation', {
+      const response = await fetch('https://vw.aisrv.in/new_backend/send-invitation', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

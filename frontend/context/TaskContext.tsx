@@ -58,7 +58,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const api_base = 'http://vw.aisrv.in/new_backend';
+  const api_base = 'https://vw.aisrv.in/new_backend';
   useEffect(() => {
     const fetchProjects = async () => {
       try {

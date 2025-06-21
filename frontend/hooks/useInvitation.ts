@@ -14,7 +14,7 @@ export const useInvitation = () => {
 
         try {
             const response = await fetch(
-                `http://vw.aisrv.in/new_backend/accept-invitation?token=${inviteToken}`, 
+                `https://vw.aisrv.in/new_backend/accept-invitation?token=${inviteToken}`, 
                 {
                     credentials: 'include',
                     headers: isLoggedIn ? {
