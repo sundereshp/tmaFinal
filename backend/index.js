@@ -1154,29 +1154,44 @@ app.put('/tasks/:id', async (req, res) => {
         const taskId = req.params.id;
         const updates = req.body;
 
-        // --- Handle comments field ---
-        if (updates.comments) {
+        // --- FIXED: Safe JSON handling for comments field ---
+        if (updates.comments !== undefined) {
             try {
-                // Parse the comments if they're a string
-                const parsedComments = typeof updates.comments === 'string'
-                    ? JSON.parse(updates.comments)
-                    : updates.comments;
-
-                // Validate and normalize the comments structure
-                if (Array.isArray(parsedComments)) {
-                    updates.comments = JSON.stringify(parsedComments.map(comment => ({
-                        id: comment.id || Date.now().toString(),
-                        userId: comment.userId || comment.userID || 0, // Handle both field names
-                        text: comment.text || '',
-                        createdAt: comment.createdAt || new Date().toISOString()
-                    })));
+                // Check if comments is already a string (JSON)
+                if (typeof updates.comments === 'string') {
+                    // Try to parse to validate it's valid JSON
+                    const parsed = JSON.parse(updates.comments);
+                    // If parsing succeeds, keep as string
+                    updates.comments = updates.comments;
+                } else if (Array.isArray(updates.comments) || typeof updates.comments === 'object') {
+                    // If it's an object/array, stringify it
+                    updates.comments = JSON.stringify(updates.comments);
                 } else {
-                    // If not an array, make it an empty array
+                    // Default to empty array
                     updates.comments = '[]';
                 }
             } catch (e) {
                 console.error('Error processing comments:', e);
                 updates.comments = '[]'; // Default to empty array on error
+            }
+        }
+
+        // --- FIXED: Safe JSON handling for info field ---
+        if (updates.info !== undefined) {
+            try {
+                if (typeof updates.info === 'string') {
+                    // Validate it's valid JSON
+                    JSON.parse(updates.info);
+                    // Keep as string if valid
+                } else if (typeof updates.info === 'object') {
+                    // Convert object to JSON string
+                    updates.info = JSON.stringify(updates.info);
+                } else {
+                    updates.info = '{}';
+                }
+            } catch (e) {
+                console.error('Error processing info:', e);
+                updates.info = '{}';
             }
         }
 
@@ -1191,22 +1206,26 @@ app.put('/tasks/:id', async (req, res) => {
             return res.status(404).json({ error: 'Task not found' });
         }
 
-        // --- Handle estHours history ---
+        // --- FIXED: Handle estHours history with better error handling ---
         if (updates.estHours !== undefined) {
             let history = [];
 
             if (currentTask[0].estPrevHours) {
                 try {
-                    const parsed = typeof currentTask[0].estPrevHours === 'string'
-                        ? JSON.parse(currentTask[0].estPrevHours)
-                        : currentTask[0].estPrevHours;
-
-                    history = Array.isArray(parsed) ? parsed : [parsed];
+                    // Safe parsing of existing history
+                    if (typeof currentTask[0].estPrevHours === 'string') {
+                        const parsed = JSON.parse(currentTask[0].estPrevHours);
+                        history = Array.isArray(parsed) ? parsed : [];
+                    } else if (Array.isArray(currentTask[0].estPrevHours)) {
+                        history = currentTask[0].estPrevHours;
+                    }
                 } catch (e) {
+                    console.error('Error parsing estPrevHours:', e);
                     history = [];
                 }
             }
 
+            // Add current value to history
             history.push({
                 value: currentTask[0].estHours,
                 timestamp: new Date().toISOString()
@@ -1221,15 +1240,19 @@ app.put('/tasks/:id', async (req, res) => {
         const allowedUpdates = [
             'name', 'description', 'status', 'assignee1ID', 'assignee2ID', 'assignee3ID',
             'estHours', 'estPrevHours', 'actHours', 'priority', 'dueDate', 'comments',
-            'taskType', 'expanded'
+            'taskType', 'expanded', 'info'
         ];
 
         for (const field of allowedUpdates) {
             if (updates[field] !== undefined) {
                 updateFields.push(`${field} = ?`);
-                values.push(field === 'dueDate' && updates[field]
-                    ? formatDateForMySQL(updates[field])
-                    : updates[field]);
+                
+                // Handle date formatting
+                if (field === 'dueDate' && updates[field]) {
+                    values.push(formatDateForMySQL(updates[field]));
+                } else {
+                    values.push(updates[field]);
+                }
             }
         }
 
@@ -1246,11 +1269,11 @@ app.put('/tasks/:id', async (req, res) => {
         values.push(taskId);
 
         // Perform update
-        await connection.query(`
-            UPDATE tasks 
-            SET ${updateFields.join(', ')} 
-            WHERE id = ?
-        `, values);
+        const updateQuery = `UPDATE tasks SET ${updateFields.join(', ')} WHERE id = ?`;
+        console.log('Update query:', updateQuery);
+        console.log('Update values:', values);
+
+        await connection.query(updateQuery, values);
 
         // Fetch updated task
         const [updatedTasks] = await connection.query('SELECT * FROM tasks WHERE id = ?', [taskId]);
@@ -1262,18 +1285,12 @@ app.put('/tasks/:id', async (req, res) => {
 
         await connection.commit();
 
-        // Parse relevant JSON fields and ensure comments are properly formatted
+        // FIXED: Safe parsing of JSON fields in response
         const updatedTask = {
             ...updatedTasks[0],
-            estPrevHours: typeof updatedTasks[0].estPrevHours === 'string'
-                ? JSON.parse(updatedTasks[0].estPrevHours || '[]')
-                : (updatedTasks[0].estPrevHours || []),
-            info: typeof updatedTasks[0].info === 'string'
-                ? JSON.parse(updatedTasks[0].info || '{}')
-                : (updatedTasks[0].info || {}),
-            comments: typeof updatedTasks[0].comments === 'string'
-                ? JSON.parse(updatedTasks[0].comments || '[]')
-                : (updatedTasks[0].comments || [])
+            estPrevHours: safeJsonParse(updatedTasks[0].estPrevHours, []),
+            info: safeJsonParse(updatedTasks[0].info, {}),
+            comments: safeJsonParse(updatedTasks[0].comments, [])
         };
 
         res.json(updatedTask);
@@ -1375,7 +1392,7 @@ function formatDateForMySQL(date) {
 
 // Helper function to safely parse JSON
 function safeJsonParse(jsonString, defaultValue) {
-    // If it's already an object/array, return it as is
+    // If it's already the expected type (object/array), return it as is
     if (typeof jsonString === 'object' && jsonString !== null) {
         return jsonString;
     }
@@ -1390,12 +1407,19 @@ function safeJsonParse(jsonString, defaultValue) {
         return defaultValue;
     }
 
+    // If it starts with '[object' it's a stringified object, return default
+    if (jsonString.startsWith('[object')) {
+        console.warn('Detected stringified object, returning default value');
+        return defaultValue;
+    }
+
     try {
         const parsed = JSON.parse(jsonString);
         // If parsing succeeded but the result is null/undefined, return the default value
         return parsed === null || parsed === undefined ? defaultValue : parsed;
     } catch (e) {
-        console.error('JSON parse error:', e);
+        console.error('JSON parse error for string:', jsonString, 'Error:', e.message);
         return defaultValue;
     }
 }
+
