@@ -10,12 +10,22 @@ import {
   Plus,
   X,
   Pencil,
-  Trash2
+  Trash2,
+  User as UserIcon
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-import { Comment } from "../../types/task";
+import { Comment, User } from "../../types/task";
 import { formatDistanceToNow } from "date-fns";
+import { getAuthToken } from "../../src/utils/auth";
+import { cn } from "../lib/utils";
+
+// Add this interface for API user response
+interface ApiUser {
+  id: number;
+  name: string;
+  email: string;
+}
 
 const normalizeComments = (comments: any): Comment[] => {
   if (!comments) return [];
@@ -67,9 +77,29 @@ const normalizeComments = (comments: any): Comment[] => {
   return [];
 };
 
+// Function to generate initials from a name
+const getInitials = (name: string) => {
+  return name.split(' ').map(word => word.charAt(0).toUpperCase()).join('').slice(0, 2);
+};
+
+// Function to generate a consistent color based on name
+const getColorForName = (name: string) => {
+  const colors = [
+    "bg-red-500", "bg-blue-500", "bg-green-500",
+    "bg-yellow-500", "bg-purple-500", "bg-pink-500",
+    "bg-indigo-500", "bg-teal-500", "bg-orange-500"
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return colors[Math.abs(hash) % colors.length];
+};
+
 interface CommentsCellProps {
   comments?: any;
-  userID?: number;
   onChange: (comments: Comment[]) => void;
   disabled?: boolean;
 }
@@ -77,7 +107,6 @@ interface CommentsCellProps {
 export function CommentsCell({
   comments: propComments = [],
   onChange,
-  userID,
   disabled = false
 }: CommentsCellProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -86,8 +115,62 @@ export function CommentsCell({
   const [editText, setEditText] = useState("");
   const [normalizedComments, setNormalizedComments] = useState<Comment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Add this utility function to get current user from localStorage
+  const getCurrentUser = () => {
+    if (typeof window === 'undefined') return null;
+    const userData = localStorage.getItem('user');
+    return userData ? JSON.parse(userData) : null;
+  };
+
+  // Fetch users from the backend
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          setUsersError('No authentication token found');
+          return;
+        }
+
+        const response = await fetch('http://vw.aisrv.in/users', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data: ApiUser[] = await response.json();
+        
+        // Transform API users to match the User type
+        const formattedUsers = data.map(user => ({
+          id: user.id.toString(),
+          name: user.name,
+          email: user.email
+        }));
+
+        setUsers(formattedUsers);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setUsersError('Failed to load users');
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchUsers();
+    }
+  }, [isOpen]);
 
   // Update normalized comments when prop changes
   useEffect(() => {
@@ -108,15 +191,27 @@ export function CommentsCell({
     }, 50);
   };
 
+  // Get user by ID
+  const getUserById = (id: string | number) => {
+    return users.find(user => user.id === id.toString()) || null;
+  };
+
   const handleAddComment = async () => {
-    if (!newComment.trim() || !userID || isSubmitting) return;
+    if (!newComment.trim() || isSubmitting) return;
+
+    // Get current user from localStorage
+    const currentUser = getCurrentUser();
+    if (!currentUser || !currentUser.id) {
+      console.error('No user found in localStorage');
+      return;
+    }
 
     setIsSubmitting(true);
     
     try {
       const comment: Comment = {
         id: Date.now().toString(),
-        userId: userID, // Match backend expectation
+        userId: currentUser.id, // Use the ID from localStorage
         text: newComment.trim(),
         createdAt: new Date().toISOString()
       };
@@ -235,73 +330,91 @@ export function CommentsCell({
             </Button>
           </div>
 
-          <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-            {normalizedComments.length === 0 ? (
+          <div className="space-y-3 max-h-32 overflow-y-auto pr-2">
+            {isLoadingUsers ? (
+              <div className="text-sm text-muted-foreground text-center py-4">Loading comments...</div>
+            ) : usersError ? (
+              <div className="text-sm text-destructive text-center py-4">{usersError}</div>
+            ) : normalizedComments.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-4">No comments yet</div>
             ) : (
-              normalizedComments.map((comment, index) => (
-                <div key={comment.id || index} className="border rounded-lg p-3 bg-muted/30 transition-all duration-200 hover:shadow-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-medium text-gray-500">
-                      User {comment.userId}
-                      {comment.createdAt && (
-                        <> • {formatDistanceToNow(new Date(comment.createdAt))} ago</>
-                      )}
-                    </span>
-                    <div className="flex space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6" 
-                        onClick={() => handleStartEdit(index)}
-                        disabled={isSubmitting}
-                      >
-                        <Pencil size={12} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteComment(index)}
-                        disabled={isSubmitting}
-                      >
-                        <Trash2 size={12} />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {editingIndex === index ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        className="min-h-[80px] text-sm"
-                        autoFocus
-                        disabled={isSubmitting}
-                      />
-                      <div className="flex justify-end space-x-2">
+              normalizedComments.map((comment, index) => {
+                const user = getUserById(comment.userId);
+                const userInitials = user ? getInitials(user.name) : '??';
+                const userColor = user ? getColorForName(user.name) : 'bg-gray-500';
+                
+                return (
+                  <div key={comment.id || index} className="border rounded-lg p-3 bg-muted/30 transition-all duration-200 hover:shadow-sm">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0",
+                          userColor
+                        )}>
+                          {userInitials}
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">
+                          {user ? user.name : `User ${comment.userId}`}
+                          {comment.createdAt && (
+                            <span className="text-muted-foreground"> • {formatDistanceToNow(new Date(comment.createdAt))} ago</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex space-x-1">
                         <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={handleCancelEdit}
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={() => handleStartEdit(index)}
                           disabled={isSubmitting}
                         >
-                          Cancel
+                          <Pencil size={12} />
                         </Button>
-                        <Button 
-                          size="sm" 
-                          onClick={handleUpdateComment}
-                          disabled={isSubmitting || !editText.trim()}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteComment(index)}
+                          disabled={isSubmitting}
                         >
-                          {isSubmitting ? 'Saving...' : 'Save'}
+                          <Trash2 size={12} />
                         </Button>
                       </div>
                     </div>
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{comment.text}</p>
-                  )}
-                </div>
-              ))
+
+                    {editingIndex === index ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="min-h-[80px] text-sm"
+                          autoFocus
+                          disabled={isSubmitting}
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleCancelEdit}
+                            disabled={isSubmitting}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={handleUpdateComment}
+                            disabled={isSubmitting || !editText.trim()}
+                          >
+                            {isSubmitting ? 'Saving...' : 'Save'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{comment.text}</p>
+                    )}
+                  </div>
+                );
+              })
             )}
             <div ref={commentsEndRef} />
           </div>

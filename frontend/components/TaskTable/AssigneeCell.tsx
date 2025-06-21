@@ -1,19 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User } from "../../types/task";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Button } from "../ui/button";
 import { Plus, X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { getAuthToken } from '../../src/utils/auth';
 
 interface AssigneeCellProps {
-  users: User[];
   assignees: number[]; // Array of numeric IDs [assignee1ID, assignee2ID, assignee3ID]
   onChange: (assignees: number[]) => void;
   disabled?: boolean;
 }
 
-export function AssigneeCell({ users, assignees, onChange, disabled = false }: AssigneeCellProps) {
+interface ApiUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export function AssigneeCell({ assignees, onChange, disabled = false }: AssigneeCellProps) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [showPopover, setShowPopover] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch users from the backend
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          setError('No authentication token found');
+          return;
+        }
+
+        const response = await fetch('http://vw.aisrv.in/users', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data: ApiUser[] = await response.json();
+        
+        // Transform API users to match the User type
+        const formattedUsers: User[] = data.map(user => ({
+          id: user.id.toString(),  // Convert number to string
+          name: user.name,
+          email: user.email
+        }));
+
+        setUsers(formattedUsers);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError('Failed to load users');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
   // Convert numeric IDs to strings for comparison
   const assigneeIds = assignees.filter(id => id !== 0).map(id => id.toString());
 
@@ -37,8 +92,6 @@ export function AssigneeCell({ users, assignees, onChange, disabled = false }: A
   const displayAssignees = assignees.filter(id => id !== 0);
   const visibleAssignees = displayAssignees.slice(0, 3);
   const additionalCount = displayAssignees.length - 3;
-  const [isAdding, setIsAdding] = useState(false);
-  const [showPopover, setShowPopover] = useState(false);
 
   const handleRemoveUser = (userId: string) => {
     const newAssignees = assignees.filter(id => id !== parseInt(userId));
@@ -66,6 +119,23 @@ export function AssigneeCell({ users, assignees, onChange, disabled = false }: A
     return colors[Math.abs(hash) % colors.length];
   };
 
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const query = searchQuery.toLowerCase();
+    return users.filter(user => 
+      user.name.toLowerCase().includes(query) || 
+      user.email.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-8">Loading users...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500 text-sm">{error}</div>;
+  }
 
   return (
     <div className="flex flex-wrap gap-1 items-center justify-center min-h-[28px]">
@@ -82,7 +152,7 @@ export function AssigneeCell({ users, assignees, onChange, disabled = false }: A
               getColorForName(user.name)
             )}
             onClick={() => !disabled && handleRemoveUser(id.toString())}
-            title={user.name}
+            title={`${user.name} (${user.email})`}
           >
             {getInitials(user.name)}
           </div>
@@ -117,7 +187,10 @@ export function AssigneeCell({ users, assignees, onChange, disabled = false }: A
                     >
                       {getInitials(user.name)}
                     </div>
-                    <span className="text-sm">{user.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm truncate">{user.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                    </div>
                     {!disabled && (
                       <Button
                         variant="ghost"
@@ -153,67 +226,65 @@ export function AssigneeCell({ users, assignees, onChange, disabled = false }: A
               <Plus className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="p-2 w-48 bg-white dark:bg-gray-800 z-50">
-            <div className="text-sm font-medium mb-2">Select User</div>
+          <PopoverContent className="p-2 w-56 bg-white dark:bg-gray-800 z-50">
             <div className="space-y-2">
-              {users.map(user => (
-                <div key={user.id} className="flex items-center gap-2 cursor-pointer" onClick={() => handleToggleUser(user.id.toString())}>
-                  <div
-                    className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium",
-                      getColorForName(user.name)
-                    )}
+              <div className="text-sm font-medium mb-1">Select User</div>
+              <div className="relative mb-2">
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearchQuery('');
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {getInitials(user.name)}
-                  </div>
-                  <span className="text-sm">{user.name}</span>
-                </div>
-              ))}
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map(user => (
+                    <div 
+                      key={user.id} 
+                      className={`flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                        assigneeIds.includes(user.id) ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                      }`}
+                      onClick={() => {
+                        handleToggleUser(user.id.toString());
+                        setSearchQuery('');
+                      }}
+                    >
+                      <div
+                        className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0",
+                          getColorForName(user.name)
+                        )}
+                      >
+                        {getInitials(user.name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{user.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500 py-2 text-center">No users found</div>
+                )}
+              </div>
             </div>
           </PopoverContent>
         </Popover>
-      )}
-
-      {/* Select user dropdown */}
-      {!disabled && isAdding && (
-        <div className="flex items-center space-x-1">
-          <Select
-            onValueChange={(value) => handleToggleUser(value)}
-            onOpenChange={(open) => {
-              if (!open) setIsAdding(false);
-            }}
-          >
-            <SelectTrigger className="h-7 w-[120px]" autoFocus>
-              <SelectValue placeholder="Select user" />
-            </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-800 z-50">
-              {users.map(user => (
-                <SelectItem
-                  key={user.id}
-                  value={user.id.toString()}
-                  className="flex items-center gap-2"
-                >
-                  <div className={cn(
-                    "w-4 h-4 rounded-full flex items-center justify-center text-white text-xs",
-                    getColorForName(user.name)
-                  )}>
-                    {getInitials(user.name)}
-                  </div>
-                  <span>{user.name}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0"
-            onClick={() => setIsAdding(false)}
-          >
-            <X size={14} />
-          </Button>
-        </div>
       )}
     </div>
   );

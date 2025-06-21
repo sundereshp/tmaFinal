@@ -29,8 +29,8 @@ export function TableHead({ onSortChange, sortConfig, status }: TableHeadProps) 
     <thead className="bg-muted">
       <tr className="border-b border-gray-200 dark:border-gray-700">
         {columns.map(({ label, accessor, sortable }) => (
-          <th key={accessor} className="px-2 py-1 text-left">
-            <div className="flex items-center gap-0.5">
+          <th key={accessor} className="px-2 py-2 text-left">
+            <div className="flex items-center gap-0.5 w-fit">
               <span>{label}</span>
               {sortable && (
                 <select 

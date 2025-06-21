@@ -189,7 +189,6 @@ export function ActionItemRow({
       <td className="px-2 py-1 overflow-hidden" style={{ width: '100px', maxWidth: '100px' }}>
         <div className="truncate">
           <AssigneeCell
-            users={users}
             assignees={[
               actionItem.assignee1ID || 0,
               actionItem.assignee2ID || 0,
@@ -257,7 +256,6 @@ export function ActionItemRow({
                 // Handle error - maybe show a toast
               }
             }}
-            userID={1} // Make sure to pass the current user's ID
             disabled={!selectedProjectId}
           />
         </div>

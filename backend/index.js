@@ -74,7 +74,7 @@ const generateInvitationToken = (email, projectId) => {
 
 // Send invitation email
 const sendInvitationEmail = async (email, projectName, token) => {
-    const invitationLink = `http://localhost:8080/accept-invitation?token=${token}`;
+    const invitationLink = `http://vw.aisrv.in/accept-invitation?token=${token}`;
 
     const mailOptions = {
         from: process.env.EMAIL_USER || 'anand@aisrv.in',
@@ -593,7 +593,7 @@ app.post('/reset-password', async (req, res) => {
                             Your password has been successfully reset. You can now login with your new password.
                         </p>
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="http://localhost:8080/login" 
+                            <a href="http://vw.aisrv.in/login" 
                                style="display: inline-block; padding: 12px 30px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
                                 Go to Login
                             </a>

@@ -114,72 +114,59 @@ export function EstimatedTimeCell({
     return result.trim() + " spent";
   };
 
-  if (!isEditing) {
-    return (
-      <div className="group relative flex items-center min-w-[100px]">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center group-hover:truncate">
-            <span className="whitespace-nowrap">
-              {formatTime(estimatedTime)}
-            </span>
-            {totalChildEstimatedTime > 0 && (
-              <span className="text-muted-foreground ml-2 whitespace-nowrap">
-                ({formatTime(totalChildEstimatedTime)})
-              </span>
-            )}
-          </div>
+  return (
+    <div 
+      ref={containerRef} 
+      className="relative flex items-center w-fit"
+      onKeyDown={handleKeyDown}
+    >
+      {isEditing ? (
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            placeholder="0"
+            value={localHours}
+            onChange={handleHoursChange}
+            ref={inputRef}
+            className="w-10 h-6 text-xs p-0 text-center"
+            min="0"
+            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+          />
+          <span className="text-xs">h</span>
+          <Input
+            type="number"
+            placeholder="0"
+            value={localMinutes}
+            onChange={handleMinutesChange}
+            className="w-10 h-6 text-xs p-0 text-center"
+            min="0"
+            max="59"
+            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+          />
+          <span className="text-xs">m</span>
+          <button 
+            onClick={handleSave}
+            className="ml-1 p-0.5 text-green-600 hover:text-green-700"
+            title="Save"
+          >
+            <CheckIcon size={14} />
+          </button>
         </div>
-        <button
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 flex-shrink-0 ml-1"
+      ) : (
+        <div 
+          className="flex items-center gap-1 min-w-[60px] text-sm text-muted-foreground hover:text-foreground cursor-pointer"
           onClick={handleEditClick}
         >
-          <Pencil className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  }
-  
-
-  return (
-    <div className="flex items-center gap-1" onKeyDown={handleKeyDown}>
-      <div className="flex items-center bg-white dark:bg-gray-800 p-0.5 rounded border border-gray-200 dark:border-gray-700">
-        <Input
-          type="number"
-          placeholder="0"
-          value={localHours}
-          onChange={handleHoursChange}
-          ref={inputRef}
-          className="w-8 h-7 text-xs p-0 text-center"
-          min="0"
-          onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-        />
-        <span className="text-xs px-0.5">h</span>
-        <Input
-          type="number"
-          placeholder="0"
-          value={localMinutes}
-          onChange={handleMinutesChange}
-          className="w-8 h-7 text-xs p-0 text-center"
-          min="0"
-          max="59"
-          onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-        />
-        <span className="text-xs px-0.5">m</span>
-      </div>
-      <button
-        onClick={handleSave}
-        className="p-1 rounded-full bg-green-500 text-white hover:bg-green-600 transition-colors"
-        title="Save"
-      >
-        <CheckIcon className="h-3 w-3" />
-      </button>
-      <button
-        onClick={() => setIsEditing(false)}
-        className="p-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        title="Cancel"
-      >
-        <span className="text-xs">×</span>
-      </button>
+          {estimatedTime !== null ? (
+            <>
+              <span>{formatTime(estimatedTime)}</span>
+              {!disabled && <Pencil size={12} className="ml-1 opacity-0 group-hover:opacity-100" />}
+            </>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

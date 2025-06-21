@@ -1,6 +1,14 @@
-
 import { useState } from "react";
-import { format, addDays, isBefore, isAfter, isSameDay } from "date-fns";
+import {
+  format,
+  addDays,
+  isBefore,
+  isSameDay,
+  setHours,
+  setMinutes
+} from "date-fns";
+import { fromZonedTime, toZonedTime, formatInTimeZone } from "date-fns-tz";
+
 import { Calendar } from "../ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
@@ -8,112 +16,106 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "../lib/utils";
 
 interface DueDateCellProps {
-  dueDate: Date | null;
-  onChange: (dueDate: Date | null) => void;
+  dueDate: Date | null; // UTC from DB
+  onChange: (dueDate: Date | null) => void; // UTC to backend
   disabled?: boolean;
 }
 
+const IST = "Asia/Kolkata";
+const DISPLAY_FORMAT = "MMM d,yyyy HH:mm";
+
 export function DueDateCell({ dueDate, onChange, disabled = false }: DueDateCellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(
+    dueDate ? fromZonedTime(dueDate, IST) : null
+  );
+  const [hour, setHour] = useState<number>(tempDate?.getHours() || 12);
+  const [minute, setMinute] = useState<number>(tempDate?.getMinutes() || 0);
 
-  // Predefined date options (calculated on each render)
-  const today = new Date();
-  const predefinedOptions = [
-    { label: "Today", getDate: () => new Date(today.getFullYear(), today.getMonth(), today.getDate()) },
-    { label: "Tomorrow", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 1) },
-    {
-      label: "This weekend",
-      getDate: () => {
-        const day = today.getDay();
-        // Saturday of this week
-        return addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), day === 6 ? 0 : 6 - day);
-      }
-    },
-    { label: "Next week", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 7) },
-    {
-      label: "Next weekend",
-      getDate: () => {
-        const day = today.getDay();
-        // Saturday of next week
-        return addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), day === 6 ? 7 : 13 - day);
-      }
-    },
-    { label: "In 2 weeks", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 14) },
-    { label: "In 4 weeks", getDate: () => addDays(new Date(today.getFullYear(), today.getMonth(), today.getDate()), 28) },
-    { label: "No due date", getDate: () => null },
-  ];
+  const displayDate = tempDate;
 
-  const handleSelectPredefined = (getDateFn: () => Date | null) => {
-    onChange(getDateFn());
-    setIsOpen(false);
-  };
-
-  const handleSelectCalendarDate = (date: Date | null) => {
-    onChange(date);
-    setIsOpen(false);
-  };
-
-  // Format due date for display
-  const formatDueDate = (date: Date | null): string => {
-    if (!date) return "";
-    const today = new Date();
-    if (isBefore(date, today) && !isSameDay(date, today)) {
-      return `${format(date, "dd-MM-yyyy")} (Overdue)`;
+  const handleSelectDate = (date: Date | undefined) => {
+    if (!date) {
+      onChange(null);
+      return;
     }
-    return format(date, "dd-MM-yyyy");
+    const updated = setMinutes(setHours(date, hour), minute);
+    setTempDate(updated);
+    const utc = toZonedTime(updated, IST);
+    onChange(utc);
+    setIsOpen(false);
   };
-  
+
+  const handleHourChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const h = parseInt(e.target.value);
+    setHour(h);
+    if (tempDate) {
+      const updated = setMinutes(setHours(tempDate, h), minute);
+      setTempDate(updated);
+      onChange(toZonedTime(updated, IST));
+    }
+  };
+
+  const handleMinuteChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const m = parseInt(e.target.value);
+    setMinute(m);
+    if (tempDate) {
+      const updated = setMinutes(setHours(tempDate, hour), m);
+      setTempDate(updated);
+      onChange(toZonedTime(updated, IST));
+    }
+  };
+
+  const formatDisplayDate = (date: Date | null): string => {
+    if (!date) return "Pick a date";
+    return formatInTimeZone(date, IST, DISPLAY_FORMAT);
+  };
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = Array.from({ length: 60 }, (_, i) => i);
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant={dueDate ? "outline" : "ghost"}
-          size="sm"
-          className={cn(
-            "h-6 px-2 text-xs justify-start",
-            dueDate && isBefore(dueDate, today) && !isSameDay(dueDate, today) ? "text-destructive" : "",
-            disabled ? "cursor-not-allowed opacity-50" : ""
-          )}
-          disabled={disabled}
-        >
-          <CalendarIcon className="mr-1 h-3 w-3" />
-          <span className="truncate">
-            {dueDate ? formatDueDate(dueDate) : "Set date"}
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-800" align="start">
-        <div className="flex">
-          <div className="border-r border-border">
-            <div className="p-2 font-medium text-sm">
-              Presets
-            </div>
-            <div className="px-1 pb-2">
-              {predefinedOptions.map((option, index) => (
-                <Button
-                  key={index}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start text-left px-2 py-1 h-8"
-                  onClick={() => handleSelectPredefined(option.getDate)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div>
+    <div className="flex items-center">
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn("w-[250px] justify-start text-left font-normal px-2")}
+            disabled={disabled}
+          >
+            {formatDisplayDate(displayDate)}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <div className="flex gap-4">
             <Calendar
               mode="single"
-              selected={dueDate || undefined}
-              onSelect={handleSelectCalendarDate}
+              selected={displayDate || undefined}
+              onSelect={handleSelectDate}
               initialFocus
-              className={cn("p-3 pointer-events-auto")}
             />
+            <div className="flex flex-col gap-2 text-sm">
+              <label className="text-xs">Hour</label>
+              <select value={hour} onChange={handleHourChange} className="border rounded px-2 py-1 bg-white dark:bg-gray-700">
+                {hours.map((h) => (
+                  <option key={h} value={h}>
+                    {h.toString().padStart(2, "0")}
+                  </option>
+                ))}
+              </select>
+
+              <label className="text-xs">Minute</label>
+              <select value={minute} onChange={handleMinuteChange} className="border rounded px-2 py-1 bg-white dark:bg-gray-700">
+                {minutes.map((m) => (
+                  <option key={m} value={m}>
+                    {m.toString().padStart(2, "0")}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

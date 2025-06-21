@@ -38,7 +38,7 @@ export default function Signup() {
 
     setIsCheckingEmail(true);
     try {
-      const response = await fetch(`https://vw.aisrv.in/new_backend/check-email?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`http://vw.aisrv.in/check-email?email=${encodeURIComponent(email)}`);
       const data = await response.json();
 
       if (data.exists) {
@@ -92,7 +92,7 @@ export default function Signup() {
       // Hash the password with MD5
       const hashedPassword = md5(formData.password);
 
-      const response = await fetch("https://vw.aisrv.in/new_backend/users", {
+      const response = await fetch("http://vw.aisrv.in/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

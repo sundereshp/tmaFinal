@@ -58,7 +58,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const api_base = 'https://vw.aisrv.in/new_backend';
+  const api_base = 'http://vw.aisrv.in';
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -217,7 +217,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Creating project with:', { name, userId: user.id });
 
-      const response = await fetch('https://vw.aisrv.in/new_backend/projects', {
+      const response = await fetch('http://localhost:5000/projects', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

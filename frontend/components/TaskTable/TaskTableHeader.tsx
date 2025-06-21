@@ -1,20 +1,22 @@
 import { Button } from "../ui/button";
-import { MinusIcon, PlusIcon, Plus, MoreHorizontal } from "lucide-react";
+import { MinusIcon, PlusIcon, Plus, MoreHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "../lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Textarea } from "../ui/textarea";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DatePicker from "react-datepicker";
 import 'react-datepicker/dist/react-datepicker.css';
 import { addDays, format, parseISO } from "date-fns";
 import { useTaskContext } from "../../context/TaskContext";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
+import React from "react";
 interface User {
   id: string;
   name: string;
   email: string;
 }
+
 interface TaskTableHeaderProps {
   projectName: string;
   projectId: string;
@@ -62,13 +64,44 @@ export function TaskTableHeader({
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // In TaskTableHeader.tsx
+  // Filter users based on search query
+  const filteredUsers = searchQuery.trim() === ''
+    ? availableUsers
+    : availableUsers.filter((user) =>
+        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+  // Handle clicking outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const toggleUser = (userId: string) => {
+    if (selectedUserIds.includes(userId)) {
+      setSelectedUserIds(selectedUserIds.filter((id) => id !== userId));
+    } else {
+      setSelectedUserIds([...selectedUserIds, userId]);
+    }
+  };
+
   useEffect(() => {
     setDescription(projectDescription || "");
     setSavedDescription(projectDescription || "");
 
-    // Handle both string and Date objects for dates
     setStartDate(projectStartDate ?
       (typeof projectStartDate === 'string' ?
         parseISO(projectStartDate) :
@@ -86,20 +119,17 @@ export function TaskTableHeader({
     setEstHours(projectEstHours || 0);
     setActHours(projectActHours || 0);
   }, [projectDescription, projectStartDate, projectEndDate, projectEstHours, projectActHours]);
+
   useEffect(() => {
-    // Set all users without filtering out the current user
     setAvailableUsers(users);
-    if (users.length > 0) {
-      // Set the first user as selected by default
-      setSelectedUserIds([users[0].id.toString()]); // Ensure it's a string
-    }
   }, [users]);
+
   const fetchUsers = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://vw.aisrv.in/new_backend/users', {
+      const response = await fetch('http://vw.aisrv.in/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -111,7 +141,7 @@ export function TaskTableHeader({
       }
 
       const data = await response.json();
-      console.log('Fetched users:', data); // Debug log
+      console.log('Fetched users:', data);
       setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -121,10 +151,11 @@ export function TaskTableHeader({
       setIsLoading(false);
     }
   };
+
   useEffect(() => {
     fetchUsers();
   }, []);
-  // In TaskTableHeader.tsx, modify the handleSendInvitation function:
+
   const handleSendInvitation = async () => {
     if (selectedUserIds.length === 0) {
       toast.error("Please select at least one user to invite");
@@ -133,51 +164,31 @@ export function TaskTableHeader({
 
     if (users.length === 0) {
       toast.error("User list is not loaded yet. Please wait...");
-      await fetchUsers(); // Try to fetch users again
+      await fetchUsers();
       return;
     }
 
-    console.log('Debug - Selected User IDs:', selectedUserIds);
-    console.log('Debug - All Users:', users);
-    // Debug log
     try {
       setIsLoading(true);
       const token = localStorage.getItem('token');
 
-      console.log('Debug - Selected User IDs:', selectedUserIds);
-      console.log('Debug - All Users:', users);
-      console.log('Debug - Selected User IDs Type:', typeof selectedUserIds[0]);
-      console.log('Debug - User IDs Type in users array:', users.map(u => ({
-        id: u.id,
-        type: typeof u.id,
-        email: u.email
-      })));
-
-      // Get the selected users' emails
-      const selectedUsers = users.filter(user => {
-        const isIncluded = selectedUserIds.includes(user.id);
-        console.log(`Checking user ${user.id} (${user.email}):`, isIncluded);
-        return isIncluded;
-      });
-
-      console.log('Debug - Selected Users:', selectedUsers);
+      const selectedUsers = users.filter(user =>
+        selectedUserIds.includes(user.id)
+      );
 
       if (selectedUsers.length === 0) {
-        console.error('No users matched the selected IDs. This could be due to type mismatch or missing users.');
         throw new Error('No valid users selected. Please try refreshing the page and try again.');
       }
 
       const emails = selectedUsers.map(user => user.email).filter(Boolean);
-      console.log('Debug - Extracted Emails:', emails);
 
       if (emails.length === 0) {
         throw new Error('No valid email addresses found for selected users');
       }
 
       const emailString = emails.join(',');
-      console.log('Debug - Final Email String:', emailString);
 
-      const response = await fetch('https://vw.aisrv.in/new_backend/send-invitation', {
+      const response = await fetch('http://vw.aisrv.in/send-invitation', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -191,13 +202,16 @@ export function TaskTableHeader({
       });
 
       const responseData = await response.json();
-      console.log('Response:', responseData);
 
       if (!response.ok) {
         throw new Error(responseData.error || 'Failed to send invitations');
       }
 
       toast.success('Invitations sent successfully!');
+      
+      setSelectedUserIds([]);
+      setSearchQuery(''); // Clear selection after successful send
+      setIsUserDropdownOpen(false); // Close dropdown
     } catch (error) {
       console.error('Error sending invitations:', error);
       toast.error(error.message || 'Failed to send invitations');
@@ -205,40 +219,11 @@ export function TaskTableHeader({
       setIsLoading(false);
     }
   };
-  const handleInviteUsers = async () => {
-    if (selectedUserIds.length === 0) return;
-
-    try {
-      const token = localStorage.getItem('token');
-
-      for (const userId of selectedUserIds) {
-        const response = await fetch(`https://vw.aisrv.in/new_backend/projects/${projectId}/invite`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ userId })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to invite user with ID: ${userId}`);
-        }
-      }
-
-      toast.success('Users invited successfully');
-      setSelectedUserIds([]); // reset after invite
-
-    } catch (error) {
-      console.error('Error inviting users:', error);
-      toast.error('Failed to invite some users');
-    }
-  };
 
   const handleStartDateChange = (date: Date | null) => {
     setStartDate(date);
     if (date && endDate && date > endDate) {
-      setEndDate(date); // Set end date to start date if it's before
+      setEndDate(date);
     }
   };
 
@@ -251,7 +236,7 @@ export function TaskTableHeader({
     try {
       await updateProject(
         projectId,
-        projectName, // Keep the existing name
+        projectName,
         description,
         startDate ? startDate.toISOString() : new Date().toISOString(),
         endDate ? endDate.toISOString() : addDays(new Date(), 30).toISOString(),
@@ -266,11 +251,14 @@ export function TaskTableHeader({
       toast.error("Failed to update project");
     }
   };
+
   const formatTime = (time: number) => {
     const hours = Math.floor(time);
     const minutes = Math.round((time - hours) * 60);
     return `${hours}h ${minutes}m`.replace(/ 0m$/, "");
   };
+
+  
   return (
     <div className="mb-4 flex items-center justify-between sticky top-0 bg-background z-10 px-8 py-3">
       <div className="flex items-center">
@@ -355,43 +343,137 @@ export function TaskTableHeader({
           </Button>
         </div>
       )}
-      <div className="px-2 py-1.5 max-h-64 overflow-y-auto">
-        {availableUsers.map((user) => (
-          <div key={user.id} className="flex items-center space-x-2 p-2 hover:bg-gray-100">
-            <input
-              type="checkbox"
-              id={`user-${user.id}`}
-              checked={selectedUserIds.includes(user.id)}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelectedUserIds([...selectedUserIds, user.id]);
-                } else {
-                  setSelectedUserIds(selectedUserIds.filter(id => id !== user.id));
-                }
-              }}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+
+      {/* Improved User Selection Component */}
+      <div className="w-full max-w-md" ref={dropdownRef}>
+        <div className="relative">
+          {/* Main Input Field */}
+          <div
+            className="w-full border border-gray-300 rounded-md px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 cursor-pointer bg-white"
+            onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+          >
+            <div className="flex flex-wrap gap-1">
+              {selectedUserIds.length > 0 ? (
+                users
+                  .filter(user => selectedUserIds.includes(user.id))
+                  .map(user => (
+                    <span
+                      key={user.id}
+                      className="inline-flex items-center px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full"
+                    >
+                      {user.name}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleUser(user.id);
+                        }}
+                        className="ml-1.5 text-indigo-600 hover:text-indigo-900"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+              ) : (
+                <span className="text-gray-700 text-sm">
+                  Select users...
+                </span>
+              )}
+            </div>
+            <ChevronDown 
+              className={`h-4 w-4 text-gray-500 transition-transform absolute right-2 top-1/2 -translate-y-1/2 ${
+                isUserDropdownOpen ? 'rotate-180' : ''
+              }`} 
             />
-            <label
-              htmlFor={`user-${user.id}`}
-              className="ml-2 text-sm font-medium text-gray-700 cursor-pointer"
-            >
-              {user.name}
-              {/* Only show email if it exists */}
-              {user.email && ` (${user.email})`}
-            </label>
           </div>
-        ))}
 
-        <Button
-          onClick={handleSendInvitation}
-          disabled={isLoading || selectedUserIds.length === 0}
-          className="ml-2"
-        >
-          {isLoading ? 'Sending...' : 'Send Invitation'}
-        </Button>
+          {/* Dropdown */}
+          {isUserDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-80 overflow-hidden">
+              {/* Search Input */}
+              <div className="p-3 border-b border-gray-200 bg-gray-50">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search users by name or email..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  autoFocus
+                />
+              </div>
+
+              {/* User List */}
+              <div className="max-h-60 overflow-y-auto">
+                {isLoading ? (
+                  <div className="p-4 text-sm text-gray-500 text-center">
+                    Loading users...
+                  </div>
+                ) : filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      onClick={() => toggleUser(user.id)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(user.id)}
+                        onChange={() => {}} // Controlled by parent click
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 mr-3"
+                        tabIndex={-1}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {user.name}
+                        </div>
+                        {user.email && (
+                          <div className="text-xs text-gray-500 truncate">
+                            {user.email}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-sm text-gray-500 text-center">
+                    {searchQuery ? 'No users found matching your search' : 'No users available'}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Count Footer */}
+              {selectedUserIds.length > 0 && (
+                <div className="p-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
+                  {selectedUserIds.length} user{selectedUserIds.length !== 1 ? 's' : ''} selected
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={handleSendInvitation}
+            disabled={isLoading || selectedUserIds.length === 0}
+            className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 transition-colors text-sm"
+          >
+            {isLoading ? 'Sending...' : `Send Invitation${selectedUserIds.length !== 1 ? 's' : ''}`}
+          </button>
+          
+          {selectedUserIds.length > 0 && (
+            <button
+              onClick={() => {
+                setSelectedUserIds([]);
+                setSearchQuery('');
+              }}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
       </div>
-
     </div>
-
   );
 }
