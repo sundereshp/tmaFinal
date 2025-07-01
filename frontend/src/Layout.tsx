@@ -18,16 +18,16 @@ export function Layout() {
         <div className="min-h-screen relative">
           {/* Header */}
           <header className="border-b bg-card fixed top-0 left-64 right-0 z-20 h-16">
-            <div className="flex items-center justify-end py-4 pr-4">
-              <div className="flex items-center gap-4">
-                <ThemeToggle />
+            <div className="flex items-center justify-between h-full px-4">
+              {/* User Profile - Left side */}
+              <div className="flex items-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium hover:opacity-80 transition-opacity">
                       {userInitial}
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 p-2">
+                  <DropdownMenuContent align="start" className="w-56 p-2">
                     <div className="px-2 py-1.5">
                       <p className="font-medium">{user?.name || 'User'}</p>
                       <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
@@ -44,6 +44,11 @@ export function Layout() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+
+              {/* Theme Toggle - Right side */}
+              <div className="flex items-center">
+                <ThemeToggle />
               </div>
             </div>
           </header>
