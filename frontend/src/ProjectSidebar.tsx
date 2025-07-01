@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
 import { ActionItem } from "../types/task";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,33 +22,33 @@ interface ProjectSidebarProps {
 }
 
 export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
-  const { 
-    projects, 
-    selectedProject, 
-    addProject, 
-    selectProject, 
+  const {
+    projects,
+    selectedProject,
+    addProject,
+    selectProject,
     startTimer,
     timer,
     deleteProject,
     renameProject,
     duplicateProject
   } = useTaskContext();
-  
+
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
   const [selectedProjectForTimer, setSelectedProjectForTimer] = useState<string | null>(null);
   const [selectedActionItem, setSelectedActionItem] = useState<string | null>(null);
-  
-  const [renamingProject, setRenamingProject] = useState<{id: string, name: string} | null>(null);
-  
+
+  const [renamingProject, setRenamingProject] = useState<{ id: string, name: string } | null>(null);
+
   // Function to flatten project structure and get all action items
   const getAllActionItems = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return [];
-    
+
     const actionItems: { id: string; name: string; path: string }[] = [];
-    
+
     project.tasks.forEach(task => {
       task.subtasks.forEach(subtask => {
         subtask.actionItems.forEach(actionItem => {
@@ -60,7 +60,7 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
         });
       });
     });
-    
+
     return actionItems;
   };
 
@@ -76,7 +76,7 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
           estHours: 0,
           tasks: []
         };
-        
+
         // Update local state
         addProject(newProject.name);
         setNewProjectName("");
@@ -128,7 +128,7 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
     setSelectedActionItem(null);
     setIsTimerDialogOpen(true);
   };
-  
+
   const handleDuplicateProject = (id: string) => {
     duplicateProject(id);
     toast.success("Project duplicated");
@@ -140,9 +140,9 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
         {!isCollapsed && <h2 className="font-semibold text-sidebar-foreground">Projects</h2>}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setIsAddingProject(!isCollapsed && true)}
               className="h-8 w-8 p-0"
             >
@@ -152,7 +152,7 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
           <TooltipContent side="right">Add Project</TooltipContent>
         </Tooltip>
       </div>
-      
+
       {!isCollapsed && isAddingProject && (
         <div className="flex items-center gap-2 mb-4">
           <Input
@@ -172,19 +172,19 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
 
       <div className="space-y-1 overflow-y-auto flex-grow">
         {projects.map((project) => (
-          <div 
-            key={project.id} 
+          <div
+            key={project.id}
             className={cn(
               "flex items-center justify-between rounded-md px-2 py-1.5",
-              selectedProject?.id === project.id 
-                ? "bg-sidebar-accent text-sidebar-accent-foreground" 
+              selectedProject?.id === project.id
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "text-sidebar-foreground hover:bg-sidebar-accent/50"
             )}
           >
             {renamingProject && renamingProject.id === project.id && !isCollapsed ? (
               <Input
                 value={renamingProject.name}
-                onChange={(e) => setRenamingProject({...renamingProject, name: e.target.value})}
+                onChange={(e) => setRenamingProject({ ...renamingProject, name: e.target.value })}
                 autoFocus
                 className="h-7 py-0 px-1 text-sm"
                 onBlur={() => handleRenameProject(project.id)}
@@ -209,18 +209,18 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
                 {isCollapsed && <TooltipContent side="right">{project.name}</TooltipContent>}
               </Tooltip>
             )}
-            
+
             {!isCollapsed && (
               <div className="flex items-center gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className={cn(
                         "h-6 w-6 p-0 flex-shrink-0",
                         timer.isRunning && timer.projectId === project.id ? "text-green-500 timer-active" : ""
-                      )} 
+                      )}
                       onClick={() => openTimerDialog(project.id)}
                     >
                       <Play className="h-3 w-3" />
@@ -228,7 +228,7 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
                   </TooltipTrigger>
                   <TooltipContent>Start Timer</TooltipContent>
                 </Tooltip>
-                
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0">
@@ -236,21 +236,21 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => setRenamingProject({ id: project.id, name: project.name })}
                       className="flex items-center"
                     >
                       <Pencil className="mr-2 h-4 w-4" />
                       <span>Rename Project</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => handleDuplicateProject(project.id)}
                       className="flex items-center"
                     >
                       <Copy className="mr-2 h-4 w-4" />
                       <span>Duplicate Project</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={() => handleDeleteProject(project.id)}
                       className="flex items-center text-destructive"
                     >
@@ -271,7 +271,7 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
           <DialogHeader>
             <DialogTitle>Select Action Item to Start Timer</DialogTitle>
           </DialogHeader>
-          
+
           <div className="py-4">
             {selectedProjectForTimer && getAllActionItems(selectedProjectForTimer).map((item) => (
               <div key={item.id} className="flex items-center space-x-2 border rounded-md p-2">
@@ -282,14 +282,14 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
                 </Label>
               </div>
             ))}
-            
+
             {selectedProjectForTimer && getAllActionItems(selectedProjectForTimer).length === 0 && (
               <div className="text-center py-4 text-muted-foreground">
                 No action items available in this project.
               </div>
             )}
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -297,9 +297,9 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              onClick={handleStartTimer} 
+            <Button
+              type="submit"
+              onClick={handleStartTimer}
               disabled={!selectedActionItem}
             >
               Start Timer
@@ -309,21 +309,28 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
       </Dialog>
 
       {/* Monitoring Link */}
-      <div className="mt-auto pt-4 border-t border-border">
-        <a
-          href="https://vw.aisrv.in/madhavan"
-          target="_blank"
-          rel="noopener noreferrer"
+      {/* Monitoring Section */}
+      <div className="mt-auto pt-4 border-t border-border space-y-2">
+        {!isCollapsed && (
+          <h2 className="text-xs font-semibold text-muted-foreground px-2">
+            Monitoring
+          </h2>
+        )}
+        <Button
+          variant="ghost"
           className={cn(
-            "flex items-center gap-2 px-2 py-1.5 text-sm font-medium rounded-md",
-            "text-sidebar-foreground hover:bg-sidebar-accent/50"
+            "w-full flex items-center justify-start gap-2 px-2 py-1.5 text-sm font-medium rounded-md",
+            "text-sidebar-foreground hover:bg-sidebar-accent/50",
+            isCollapsed && "justify-center"
           )}
+          onClick={() => {
+            window.open("https://vw.aisrv.in/madhavan", "_blank");
+          }}
         >
-          <span className={isCollapsed ? "mx-auto" : ""}>
-            {isCollapsed ? "📊" : "Monitoring"}
-          </span>
-        </a>
+          <span>{isCollapsed ? "📊" : "Go to Monitoring"}</span>
+        </Button>
       </div>
+
     </div>
   );
 }
