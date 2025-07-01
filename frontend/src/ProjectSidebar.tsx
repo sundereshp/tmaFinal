@@ -16,7 +16,7 @@ import {
 } from "../components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
-import Logo from '../assets/logo.png'; // Assuming the logo is in the assets folder
+import Logo from "../source/assets/images/Final.png"; // Assuming the logo is in the assets folder
 
 interface ProjectSidebarProps {
   isCollapsed?: boolean;
