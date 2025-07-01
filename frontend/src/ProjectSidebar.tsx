@@ -307,6 +307,23 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Monitoring Link */}
+      <div className="mt-auto pt-4 border-t border-border">
+        <a
+          href="https://vw.aisrv.in/madhavan"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "flex items-center gap-2 px-2 py-1.5 text-sm font-medium rounded-md",
+            "text-sidebar-foreground hover:bg-sidebar-accent/50"
+          )}
+        >
+          <span className={isCollapsed ? "mx-auto" : ""}>
+            {isCollapsed ? "📊" : "Monitoring"}
+          </span>
+        </a>
+      </div>
     </div>
   );
 }
