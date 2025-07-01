@@ -15,8 +15,9 @@ export function Layout() {
   return (
     <ThemeProvider>
       <TaskProvider>
-        <div className="min-h-screen flex flex-col relative">
-          <header className="border-b bg-card fixed top-0 right-0 left-64 z-20">
+        <div className="min-h-screen relative">
+          {/* Header */}
+          <header className="border-b bg-card fixed top-0 left-64 right-0 z-20 h-16">
             <div className="flex items-center justify-end py-4 pr-4">
               <div className="flex items-center gap-4">
                 <ThemeToggle />
@@ -47,16 +48,17 @@ export function Layout() {
             </div>
           </header>
 
-          <div className="flex flex-1 overflow-hidden pt-16">
-            <div className="border-r bg-sidebar border-sidebar-border w-64 flex-shrink-0">
-              <ProjectSidebar />
-            </div>
-
-            <div className="flex-1 ml-64 overflow-auto">
-              <TaskTable />
-            </div>
+          {/* Project Sidebar - absolutely positioned */}
+          <div className="fixed top-0 left-0 w-64 h-screen border-r bg-sidebar border-sidebar-border z-30">
+            <ProjectSidebar />
           </div>
 
+          {/* Main Content */}
+          <main className="ml-64 pt-16 h-screen overflow-auto">
+            <TaskTable />
+          </main>
+
+          {/* Timer always at bottom */}
           <Timer />
         </div>
       </TaskProvider>
