@@ -323,8 +323,12 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
             "text-sidebar-foreground hover:bg-sidebar-accent/50",
             isCollapsed && "justify-center"
           )}
-          onClick={() => {
-            window.open("https://vw.aisrv.in/madhavan", "_blank");
+          onClick={(e) => {
+            if (e.ctrlKey || e.metaKey) {
+              window.open("https://vw.aisrv.in/madhavan", "_blank");
+            } else {
+              window.location.href = "https://vw.aisrv.in/madhavan";
+            }
           }}
         >
           <span>{isCollapsed ? "📊" : "Go to Monitoring"}</span>
