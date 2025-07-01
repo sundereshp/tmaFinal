@@ -49,12 +49,12 @@ export function Layout() {
           </header>
 
           {/* Project Sidebar - absolutely positioned */}
-          <div className="fixed top-0 left-0 w-64 border-r bg-sidebar border-sidebar-border z-30">
+          <div className="fixed top-0 left-0 bottom-0 w-64 border-r bg-sidebar border-sidebar-border z-30">
             <ProjectSidebar />
           </div>
 
           {/* Main Content */}
-          <main className="ml-64 pt-16 h-screen overflow-auto">
+          <main className="ml-64 pt-16 min-h-screen overflow-auto">
             <TaskTable />
           </main>
 
