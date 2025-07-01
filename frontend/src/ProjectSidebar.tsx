@@ -309,7 +309,7 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
               }
             }}
           >
-            <span>{isCollapsed ? "📊" : "Go to Monitoring"}</span>
+            <span>{isCollapsed ? "📊" : "Monitoring Dashboard"}</span>
           </Button>
         </div>
       </div>
