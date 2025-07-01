@@ -6,6 +6,7 @@ import { TaskTable } from "../components/TaskTable/TaskTable";
 import { Timer } from "./Timer";
 import { getCurrentUser } from "./utils/auth";
 import Logo from "../source/assets/images/Final.png";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 
 export function Layout() {
   const user = getCurrentUser();
@@ -16,7 +17,7 @@ export function Layout() {
       <TaskProvider>
         <div className="min-h-screen flex flex-col">
           <header className="border-b bg-card sticky top-0 z-20">
-            <div className="containerheader  flex items-center justify-between py-4 pr-4 ml-12 mr-4 ">
+            <div className="containerheader flex items-center justify-between py-4 pr-4 ml-12 mr-4">
               <div className="flex items-center gap-8">
                 <div className="flex items-center justify-center h-8">
                   <img
@@ -25,27 +26,33 @@ export function Layout() {
                     className="logo flex items-center justify-center h-8"
                   />
                 </div>
-                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium">
-                  {userInitial}
-                </div>
-
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-medium hover:opacity-80 transition-opacity">
+                      {userInitial}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56 p-2">
+                    <div className="px-2 py-1.5">
+                      <p className="font-medium">{user?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
+                    </div>
+                    <DropdownMenuItem 
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer mt-1"
+                      onClick={() => {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        window.location.href = '/sunderesh/#/login';
+                      }}
+                    >
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <div className="flex items-center gap-4">
                 <ThemeToggle />
-                <div className="flex items-center gap-2">
-                  <button
-                    className="px-3 py-1 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-                    onClick={() => {
-                      console.log('Logout clicked');
-                      localStorage.removeItem('token');
-                      localStorage.removeItem('user');
-                      window.location.href = '/sunderesh/#/login';
-                    }}
-                  >
-                    Logout
-                  </button>
-                </div>
               </div>
             </div>
           </header>
