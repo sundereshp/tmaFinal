@@ -31,7 +31,7 @@ export function Layout() {
                       <p className="font-medium">{user?.name || 'User'}</p>
                       <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
                     </div>
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer mt-1"
                       onClick={() => {
                         localStorage.removeItem('token');
@@ -48,9 +48,10 @@ export function Layout() {
           </header>
 
           <div className="flex flex-1 overflow-hidden pt-16">
-            <div className="h-screen fixed top-0 left-0 border-r bg-sidebar border-sidebar-border w-64">
+            <div className="border-r bg-sidebar border-sidebar-border w-64 flex-shrink-0">
               <ProjectSidebar />
             </div>
+
             <div className="flex-1 ml-64 overflow-auto">
               <TaskTable />
             </div>

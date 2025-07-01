@@ -136,10 +136,10 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden bg-sidebar">
       {/* Logo Section */}
-      <div className="bg-primary/10 p-4 border-b border-border">
-        <div className="flex items-center justify-center bg-white p-2 rounded-lg shadow-sm">
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center justify-center">
           <img
             src={Logo}
             alt="Company Logo"
