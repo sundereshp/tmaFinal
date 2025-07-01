@@ -49,7 +49,7 @@ export function Layout() {
           </header>
 
           {/* Project Sidebar - absolutely positioned */}
-          <div className="fixed top-0 left-0 w-64 h-screen border-r bg-sidebar border-sidebar-border z-30">
+          <div className="fixed top-0 left-0 w-64 border-r bg-sidebar border-sidebar-border z-30">
             <ProjectSidebar />
           </div>
 
