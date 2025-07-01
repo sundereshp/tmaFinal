@@ -15,11 +15,10 @@ export function Layout() {
   return (
     <ThemeProvider>
       <TaskProvider>
-        <div className="min-h-screen flex flex-col">
-          <header className="border-b bg-card sticky top-0 z-20">
-            <div className="containerheader flex items-center justify-between py-4 pr-4 ml-12 mr-4">
-              {/* User Profile + Theme Toggle */}
-              <div className="flex items-center gap-4 ml-auto">
+        <div className="min-h-screen flex flex-col relative">
+          <header className="border-b bg-card fixed top-0 right-0 left-64 z-20">
+            <div className="flex items-center justify-end py-4 pr-4">
+              <div className="flex items-center gap-4">
                 <ThemeToggle />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -48,11 +47,13 @@ export function Layout() {
             </div>
           </header>
 
-          <div className="flex flex-1 overflow-hidden">
-            <div className="min-h-screen border-r bg-sidebar border-sidebar-border transition-all duration-200 flex-shrink-0 w-64">
+          <div className="flex flex-1 overflow-hidden pt-16">
+            <div className="h-screen fixed top-0 left-0 border-r bg-sidebar border-sidebar-border w-64">
               <ProjectSidebar />
             </div>
-            <TaskTable />
+            <div className="flex-1 ml-64 overflow-auto">
+              <TaskTable />
+            </div>
           </div>
 
           <Timer />
