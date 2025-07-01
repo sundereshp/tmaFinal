@@ -5,7 +5,6 @@ import { ProjectSidebar } from "./ProjectSidebar";
 import { TaskTable } from "../components/TaskTable/TaskTable";
 import { Timer } from "./Timer";
 import { getCurrentUser } from "./utils/auth";
-import Logo from "../source/assets/images/Final.png";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 
 export function Layout() {
