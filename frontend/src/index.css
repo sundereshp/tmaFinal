@@ -215,7 +215,6 @@ header {
 
 /* Scrollable content area */
 .flex-1.p-6.overflow-auto {
-  height: calc(100vh - 65px); /* Adjust for header */
   overflow-y: auto;
   scrollbar-width: thin;
 }
