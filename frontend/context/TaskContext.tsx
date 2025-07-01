@@ -217,7 +217,7 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
 
       console.log('Creating project with:', { name, userId: user.id });
 
-      const response = await fetch('https://vw.aisrv.in/projects', {
+      const response = await fetch(api_base + '/projects', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
