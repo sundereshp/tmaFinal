@@ -37,7 +37,7 @@ export function AssigneeCell({ assignees, onChange, disabled = false }: Assignee
           return;
         }
 
-        const response = await fetch('http://vw.aisrv.in/users', {
+        const response = await fetch('https://vw.aisrv.in/new_backend/users', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
