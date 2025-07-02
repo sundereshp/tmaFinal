@@ -29,14 +29,8 @@ export default function Signup() {
       return;
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailError('Please enter a valid email address');
-      return;
-    }
-
-    setIsCheckingEmail(true);
+    
+        setIsCheckingEmail(true);
     try {
       const response = await fetch(`https://vw.aisrv.in/new_backend/check-email?email=${encodeURIComponent(email)}`);
       const data = await response.json();
