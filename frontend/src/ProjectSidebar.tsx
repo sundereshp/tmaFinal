@@ -311,6 +311,20 @@ export function ProjectSidebar({ isCollapsed = false }: ProjectSidebarProps) {
           >
             <span>{isCollapsed ? "📊" : "Monitoring Dashboard"}</span>
           </Button>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full flex items-center justify-start gap-2 px-2 py-1.5 text-sm font-medium rounded-md mt-1",
+              "text-sidebar-foreground hover:bg-sidebar-accent/50",
+              isCollapsed && "justify-center"
+            )}
+            onClick={() => {
+              // Replace with actual download link when available
+              window.open("/downloads/desktop-app", "_blank");
+            }}
+          >
+            <span>{isCollapsed ? "⬇️" : "Download Desktop App"}</span>
+          </Button>
         </div>
       </div>
 
